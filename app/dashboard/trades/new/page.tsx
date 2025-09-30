@@ -174,16 +174,27 @@ export default function NewTradePage() {
     }
   };
 
+  const handleGoBack = () => {
+    router.back();
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <Link
+        {/* <Link
           href="/dashboard/trades"
           className="inline-flex items-center text-gray-400 hover:text-white mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Trades
-        </Link>
+        </Link> */}
+        <button
+          className="inline-flex items-center text-gray-400 hover:text-white mb-4"
+          onClick={handleGoBack}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Previous
+        </button>
         <h1 className="text-3xl font-bold text-white">Add New Trade</h1>
         <p className="text-gray-400 mt-2">Record your trading activity</p>
       </div>

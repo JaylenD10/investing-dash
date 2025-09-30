@@ -36,7 +36,7 @@ export default function Sidebar() {
   return (
     <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-white">TradeTracker</h1>
+        <h1 className="text-2xl font-bold text-white">Trade Syndicate</h1>
         <p className="text-gray-400 text-sm mt-1">
           Professional Trading Journal
         </p>
