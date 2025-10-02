@@ -10,12 +10,15 @@ import {
   LogOut,
   PlusCircle,
   BarChart3,
+  Calendar,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { name: "Trades", href: "/dashboard/trades", icon: TrendingUp },
   { name: "Add Trade", href: "/dashboard/trades/new", icon: PlusCircle },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
@@ -24,6 +27,7 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
