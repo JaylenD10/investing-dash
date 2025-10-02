@@ -11,6 +11,8 @@ import {
   PlusCircle,
   BarChart3,
   Calendar,
+  Menu,
+  ArrowLeft,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -38,14 +40,35 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-white">Trade Syndicate</h1>
-        <p className="text-gray-400 text-sm mt-1">
-          Professional Trading Journal
-        </p>
+    <div
+      className={`${
+        isCollapsed ? "w-20" : "w-64"
+      } bg-gray-800 border-r border-gray-700 flex flex-col transition-all duration-300`}
+    >
+      {/* Header */}
+      <div className="p-6 flex items-center justify-between">
+        {!isCollapsed && (
+          <div>
+            <h1 className="text-2xl font-bold text-white">TradeTracker</h1>
+            <p className="text-gray-400 text-sm mt-1">Trading Journal</p>
+          </div>
+        )}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className={`p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors ${
+            isCollapsed ? "mx-auto" : ""
+          }`}
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? (
+            <Menu className="w-5 h-5" />
+          ) : (
+            <ArrowLeft className="w-5 h-5" />
+          )}
+        </button>
       </div>
 
+      {/* Navigation */}
       <nav className="flex-1 px-4">
         <ul className="space-y-2">
           {menuItems.map((item) => {
@@ -56,14 +79,19 @@ export default function Sidebar() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`flex items-center ${
+                    isCollapsed ? "justify-center" : "space-x-3"
+                  } px-4 py-3 rounded-lg transition-colors ${
                     isActive
                       ? "bg-blue-600 text-white"
                       : "text-gray-300 hover:bg-gray-700 hover:text-white"
                   }`}
+                  title={isCollapsed ? item.name : ""}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{item.name}</span>
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {!isCollapsed && (
+                    <span className="font-medium">{item.name}</span>
+                  )}
                 </Link>
               </li>
             );
@@ -71,13 +99,17 @@ export default function Sidebar() {
         </ul>
       </nav>
 
+      {/* User section */}
       <div className="p-4 border-t border-gray-700">
         <button
           onClick={handleLogout}
-          className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors w-full"
+          className={`flex items-center ${
+            isCollapsed ? "justify-center" : "space-x-3"
+          } px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors w-full`}
+          title={isCollapsed ? "Logout" : ""}
         >
-          <LogOut className="w-5 h-5" />
-          <span className="font-medium">Logout</span>
+          <LogOut className="w-5 h-5 flex-shrink-0" />
+          {!isCollapsed && <span className="font-medium">Logout</span>}
         </button>
       </div>
     </div>

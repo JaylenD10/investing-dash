@@ -181,13 +181,6 @@ export default function NewTradePage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        {/* <Link
-          href="/dashboard/trades"
-          className="inline-flex items-center text-gray-400 hover:text-white mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Trades
-        </Link> */}
         <button
           className="inline-flex items-center text-gray-400 hover:text-white mb-4"
           onClick={handleGoBack}
