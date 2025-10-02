@@ -6,7 +6,6 @@ import { Trade, DailyStats } from "@/types/database";
 import {
   LineChart,
   Line,
-  BarChart,
   Bar,
   XAxis,
   YAxis,
@@ -15,15 +14,8 @@ import {
   Legend,
   ResponsiveContainer,
   ComposedChart,
-  Area,
 } from "recharts";
-import {
-  format,
-  parseISO,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-} from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   ArrowUpRight,
   ArrowDownRight,

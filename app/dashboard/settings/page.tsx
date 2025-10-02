@@ -119,7 +119,7 @@ export default function SettingsPage() {
 
       setMessage({ type: "success", text: "Profile updated successfully!" });
       fetchProfile();
-    } catch (error) {
+    } catch {
       setMessage({
         type: "error",
         text: "Error updating profile. Please try again.",
@@ -159,7 +159,7 @@ export default function SettingsPage() {
 
       setMessage({ type: "success", text: "Password updated successfully!" });
       passwordForm.reset();
-    } catch (error) {
+    } catch {
       setMessage({
         type: "error",
         text: "Error updating password. Please try again.",
@@ -180,7 +180,7 @@ export default function SettingsPage() {
         type: "success",
         text: "Notification preferences updated!",
       });
-    } catch (error) {
+    } catch {
       setMessage({
         type: "error",
         text: "Error updating notifications. Please try again.",
@@ -546,7 +546,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <p className="text-gray-400 text-sm mb-4">
-                  You're currently on the free plan with basic features.
+                  You&#39;re currently on the free plan with basic features.
                 </p>
                 <ul className="space-y-2 text-sm text-gray-400">
                   <li className="flex items-center">

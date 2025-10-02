@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Trade, DailyStats } from "@/types/database";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   PieChart,
@@ -23,16 +21,7 @@ import {
   PolarRadiusAxis,
   Radar,
 } from "recharts";
-import {
-  format,
-  parseISO,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  startOfMonth,
-  endOfMonth,
-  differenceInHours,
-} from "date-fns";
+import { differenceInHours } from "date-fns";
 import { TrendingUp, TrendingDown, Clock, Target } from "lucide-react";
 
 export default function AnalyticsPage() {

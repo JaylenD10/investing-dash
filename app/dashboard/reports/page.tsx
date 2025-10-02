@@ -9,7 +9,6 @@ import {
   Trash2,
   Calendar,
   Filter,
-  Check,
   Eye,
   X,
 } from "lucide-react";
@@ -142,7 +141,7 @@ export default function ReportsPage() {
       const fileExt = selectedFile.name.split(".").pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from("reports")
         .upload(fileName, selectedFile);
 

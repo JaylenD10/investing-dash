@@ -5,16 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { format, parseISO } from "date-fns";
 import Link from "next/link";
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  Filter,
-  Save,
-  X,
-  Check,
-  Search,
-} from "lucide-react";
+import { Plus, Edit2, Trash2, Filter, Save, X, Search } from "lucide-react";
 
 export default function TradesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -134,13 +125,27 @@ export default function TradesPage() {
     if (!editingId) return;
 
     try {
+      // Get the original trade before updating
+      const originalTrade = trades.find((t) => t.id === editingId);
+      if (!originalTrade) return;
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Calculate P&L values
+      const pnl =
+        editedTrade.status === "CLOSED" ? calculatePnL(editedTrade) : null;
+      const percentage_gain =
+        editedTrade.status === "CLOSED"
+          ? calculatePercentageGain(editedTrade)
+          : null;
+
       const updatedTrade = {
         ...editedTrade,
-        pnl: editedTrade.status === "CLOSED" ? calculatePnL(editedTrade) : null,
-        percentage_gain:
-          editedTrade.status === "CLOSED"
-            ? calculatePercentageGain(editedTrade)
-            : null,
+        pnl,
+        percentage_gain,
         updated_at: new Date().toISOString(),
       };
 
@@ -160,17 +165,17 @@ export default function TradesPage() {
         );
       }
 
-      // Update daily stats if the trade is closed
+      // Handle daily stats updates
+      // If the original trade was closed, recalculate stats for its date
+      if (originalTrade.status === "CLOSED" && originalTrade.exit_date) {
+        await recalculateDailyStats(user.id, originalTrade.exit_date);
+      }
+
+      // If the updated trade is closed, recalculate stats for its date
       if (updatedTrade.status === "CLOSED" && editedTrade.exit_date) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          await updateDailyStats(
-            user.id,
-            editedTrade.exit_date,
-            updatedTrade.pnl || 0
-          );
+        // Only recalculate if it's a different date
+        if (originalTrade.exit_date !== editedTrade.exit_date) {
+          await recalculateDailyStats(user.id, editedTrade.exit_date);
         }
       }
 
@@ -182,13 +187,10 @@ export default function TradesPage() {
     }
   };
 
-  const updateDailyStats = async (
-    userId: string,
-    date: string,
-    pnl: number
-  ) => {
+  const recalculateDailyStats = async (userId: string, date: string) => {
     const statsDate = date.split("T")[0];
 
+    // Fetch all trades for that day
     const { data: dayTrades } = await supabase
       .from("trades")
       .select("*")
@@ -197,13 +199,15 @@ export default function TradesPage() {
       .gte("exit_date", `${statsDate}T00:00:00`)
       .lt("exit_date", `${statsDate}T23:59:59`);
 
-    if (dayTrades) {
+    if (dayTrades && dayTrades.length > 0) {
+      // Calculate stats for the day
       const totalTrades = dayTrades.length;
       const winningTrades = dayTrades.filter((t) => t.pnl && t.pnl > 0).length;
       const losingTrades = dayTrades.filter((t) => t.pnl && t.pnl < 0).length;
       const totalPnl = dayTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
       const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
 
+      // Update or insert the daily stats
       await supabase.from("daily_stats").upsert(
         {
           user_id: userId,
@@ -218,6 +222,13 @@ export default function TradesPage() {
           onConflict: "user_id,date",
         }
       );
+    } else {
+      // No trades for this day, delete the daily stats entry
+      await supabase
+        .from("daily_stats")
+        .delete()
+        .eq("user_id", userId)
+        .eq("date", statsDate);
     }
   };
 
@@ -225,10 +236,26 @@ export default function TradesPage() {
     if (!confirm("Are you sure you want to delete this trade?")) return;
 
     try {
+      // Get the trade before deleting
+      const tradeToDelete = trades.find((t) => t.id === id);
+      if (!tradeToDelete) return;
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { error } = await supabase.from("trades").delete().eq("id", id);
 
       if (error) throw error;
+
+      // Update local state
       setTrades(trades.filter((trade) => trade.id !== id));
+
+      // If the deleted trade was closed, recalculate stats for that day
+      if (tradeToDelete.status === "CLOSED" && tradeToDelete.exit_date) {
+        await recalculateDailyStats(user.id, tradeToDelete.exit_date);
+      }
     } catch (error) {
       console.error("Error deleting trade:", error);
       alert("Error deleting trade");

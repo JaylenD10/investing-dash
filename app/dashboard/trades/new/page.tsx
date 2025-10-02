@@ -7,7 +7,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 
 const tradeSchema = z.object({
   symbol: z.string().min(1, "Symbol is required"),
@@ -17,7 +16,6 @@ const tradeSchema = z.object({
   quantity: z.number().int().positive("Quantity must be positive"),
   commission: z.number().min(0, "Commission must be non-negative").optional(),
   notes: z.string().optional(),
-  // For closed trades
   exit_date: z.string().optional(),
   exit_price: z.number().positive("Exit price must be positive").optional(),
 });
@@ -35,7 +33,6 @@ export default function NewTradePage() {
     handleSubmit,
     formState: { errors },
     watch,
-    setValue,
   } = useForm<TradeFormData>({
     resolver: zodResolver(tradeSchema),
     defaultValues: {
