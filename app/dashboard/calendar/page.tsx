@@ -343,9 +343,8 @@ export default function CalendarPage() {
       </div>
 
       {/* Daily Trade Details */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Trade Details</h3>
-        <p className="text-gray-400 text-sm">
+      <div>
+        <p className="text-gray-400 mt-2">
           Click on any day to view detailed trades
         </p>
       </div>
