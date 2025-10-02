@@ -22,6 +22,7 @@ import {
   Calendar as CalendarIcon,
   TrendingUp,
   TrendingDown,
+  X,
 } from "lucide-react";
 
 interface CalendarDay {
@@ -37,6 +38,7 @@ export default function CalendarPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [monthStats, setMonthStats] = useState({
     pnl: 0,
     trades: 0,
@@ -164,6 +166,12 @@ export default function CalendarPage() {
     );
   }
 
+  const handleDayClick = (day: CalendarDay) => {
+    if (day.isCurrentMonth && (day.trades.length > 0 || day.stats)) {
+      setSelectedDay(day);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -266,6 +274,7 @@ export default function CalendarPage() {
                               ? "bg-gray-700/50 hover:bg-gray-700"
                               : "bg-gray-800/50"
                           } ${day.isToday ? "ring-2 ring-blue-500" : ""}`}
+                          onClick={() => handleDayClick(day)}
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span
@@ -340,6 +349,112 @@ export default function CalendarPage() {
           Click on any day to view detailed trades
         </p>
       </div>
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold text-white">
+                    {format(selectedDay.date, "EEEE, MMMM d, yyyy")}
+                  </h3>
+                  {selectedDay.stats && (
+                    <div className="flex items-center space-x-4 mt-2 text-sm">
+                      <span
+                        className={`font-medium ${
+                          selectedDay.stats.total_pnl >= 0
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }`}
+                      >
+                        P&L: ${selectedDay.stats.total_pnl.toFixed(2)}
+                      </span>
+                      <span className="text-gray-400">
+                        {selectedDay.stats.total_trades} trades
+                      </span>
+                      <span className="text-gray-400">
+                        Win rate: {selectedDay.stats.win_rate.toFixed(1)}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {selectedDay.trades.length > 0 ? (
+                <div className="space-y-4">
+                  <h4 className="text-lg font-medium text-white mb-4">
+                    Trades
+                  </h4>
+                  <div className="space-y-3">
+                    {selectedDay.trades.map((trade) => (
+                      <div
+                        key={trade.id}
+                        className="bg-gray-700 rounded-lg p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center space-x-3">
+                              <span className="text-white font-medium">
+                                {trade.symbol}
+                              </span>
+                              <span
+                                className={`px-2 py-1 rounded text-xs font-medium ${
+                                  trade.side === "LONG"
+                                    ? "bg-green-500/10 text-green-500"
+                                    : "bg-red-500/10 text-red-500"
+                                }`}
+                              >
+                                {trade.side}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-400 mt-1">
+                              Entry: ${trade.entry_price} | Exit: $
+                              {trade.exit_price || "-"} | Qty: {trade.quantity}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {trade.pnl !== undefined && trade.pnl !== null && (
+                              <p
+                                className={`font-medium ${
+                                  trade.pnl >= 0
+                                    ? "text-green-500"
+                                    : "text-red-500"
+                                }`}
+                              >
+                                ${trade.pnl.toFixed(2)}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-400">
+                              {trade.status}
+                            </p>
+                          </div>
+                        </div>
+                        {trade.notes && (
+                          <p className="text-sm text-gray-500 mt-2">
+                            {trade.notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-center py-8">
+                  No trades on this day
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

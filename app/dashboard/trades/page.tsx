@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { format, parseISO } from "date-fns";
 import Link from "next/link";
-import { Plus, Edit2, Trash2, Filter } from "lucide-react";
+import { Plus, Edit2, Trash2, Filter, Save, X, Check } from "lucide-react";
 
 export default function TradesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -13,6 +13,8 @@ export default function TradesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
   const [sortBy, setSortBy] = useState<"date" | "pnl">("date");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editedTrade, setEditedTrade] = useState<Partial<Trade>>({});
   const supabase = createClient();
 
   useEffect(() => {
@@ -48,12 +50,10 @@ export default function TradesPage() {
   const filterAndSortTrades = () => {
     let filtered = [...trades];
 
-    // Apply filter
     if (filter !== "ALL") {
       filtered = filtered.filter((trade) => trade.status === filter);
     }
 
-    // Apply sorting
     filtered.sort((a, b) => {
       if (sortBy === "date") {
         return (
@@ -66,6 +66,140 @@ export default function TradesPage() {
     });
 
     setFilteredTrades(filtered);
+  };
+
+  const handleEdit = (trade: Trade) => {
+    setEditingId(trade.id);
+    setEditedTrade({
+      symbol: trade.symbol,
+      side: trade.side,
+      entry_date: trade.entry_date,
+      exit_date: trade.exit_date,
+      entry_price: trade.entry_price,
+      exit_price: trade.exit_price,
+      quantity: trade.quantity,
+      commission: trade.commission,
+      notes: trade.notes,
+      status: trade.status,
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditedTrade({});
+  };
+
+  const calculatePnL = (trade: Partial<Trade>) => {
+    if (!trade.entry_price || !trade.exit_price || !trade.quantity) return 0;
+
+    const priceDiff =
+      trade.side === "LONG"
+        ? trade.exit_price - trade.entry_price
+        : trade.entry_price - trade.exit_price;
+
+    return priceDiff * trade.quantity - (trade.commission || 0);
+  };
+
+  const calculatePercentageGain = (trade: Partial<Trade>) => {
+    if (!trade.entry_price || !trade.exit_price) return 0;
+
+    const percentage =
+      trade.side === "LONG"
+        ? ((trade.exit_price - trade.entry_price) / trade.entry_price) * 100
+        : ((trade.entry_price - trade.exit_price) / trade.entry_price) * 100;
+
+    return percentage;
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+
+    try {
+      const updatedTrade = {
+        ...editedTrade,
+        pnl: editedTrade.status === "CLOSED" ? calculatePnL(editedTrade) : null,
+        percentage_gain:
+          editedTrade.status === "CLOSED"
+            ? calculatePercentageGain(editedTrade)
+            : null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from("trades")
+        .update(updatedTrade)
+        .eq("id", editingId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state with the returned data
+      if (data) {
+        setTrades(
+          trades.map((trade) => (trade.id === editingId ? data : trade))
+        );
+      }
+
+      // Update daily stats if the trade is closed
+      if (updatedTrade.status === "CLOSED" && editedTrade.exit_date) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          await updateDailyStats(
+            user.id,
+            editedTrade.exit_date,
+            updatedTrade.pnl || 0
+          );
+        }
+      }
+
+      setEditingId(null);
+      setEditedTrade({});
+    } catch (error) {
+      console.error("Error updating trade:", error);
+      alert("Error updating trade");
+    }
+  };
+
+  const updateDailyStats = async (
+    userId: string,
+    date: string,
+    pnl: number
+  ) => {
+    const statsDate = date.split("T")[0];
+
+    const { data: dayTrades } = await supabase
+      .from("trades")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "CLOSED")
+      .gte("exit_date", `${statsDate}T00:00:00`)
+      .lt("exit_date", `${statsDate}T23:59:59`);
+
+    if (dayTrades) {
+      const totalTrades = dayTrades.length;
+      const winningTrades = dayTrades.filter((t) => t.pnl && t.pnl > 0).length;
+      const losingTrades = dayTrades.filter((t) => t.pnl && t.pnl < 0).length;
+      const totalPnl = dayTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+      const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
+
+      await supabase.from("daily_stats").upsert(
+        {
+          user_id: userId,
+          date: statsDate,
+          total_trades: totalTrades,
+          winning_trades: winningTrades,
+          losing_trades: losingTrades,
+          total_pnl: totalPnl,
+          win_rate: winRate,
+        },
+        {
+          onConflict: "user_id,date",
+        }
+      );
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -228,79 +362,239 @@ export default function TradesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
-              {filteredTrades.map((trade) => (
-                <tr
-                  key={trade.id}
-                  className="hover:bg-gray-700/50 transition-colors"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {format(parseISO(trade.entry_date), "MMM dd, yyyy")}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                    {trade.symbol}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        trade.side === "LONG"
-                          ? "bg-green-500/10 text-green-500"
-                          : "bg-red-500/10 text-red-500"
-                      }`}
-                    >
-                      {trade.side}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    ${trade.entry_price}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {trade.exit_price ? `$${trade.exit_price}` : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {trade.quantity}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {trade.pnl !== undefined && trade.pnl !== null ? (
-                      <span
-                        className={
-                          trade.pnl >= 0 ? "text-green-500" : "text-red-500"
-                        }
-                      >
-                        ${trade.pnl.toFixed(2)}
-                      </span>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        trade.status === "OPEN"
-                          ? "bg-blue-500/10 text-blue-500"
-                          : "bg-gray-500/10 text-gray-400"
-                      }`}
-                    >
-                      {trade.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    <div className="flex items-center space-x-2">
-                      <Link
-                        href={`/dashboard/trades/edit/${trade.id}`}
-                        className="text-gray-400 hover:text-white"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(trade.id)}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredTrades.map((trade) => {
+                const isEditing = editingId === trade.id;
+
+                return (
+                  <tr
+                    key={trade.id}
+                    className="hover:bg-gray-700/50 transition-colors"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {isEditing ? (
+                        <input
+                          type="datetime-local"
+                          value={editedTrade.entry_date?.slice(0, 16)}
+                          onChange={(e) =>
+                            setEditedTrade({
+                              ...editedTrade,
+                              entry_date: e.target.value,
+                            })
+                          }
+                          className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+                        />
+                      ) : (
+                        format(parseISO(trade.entry_date), "MMM dd, yyyy")
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editedTrade.symbol}
+                          onChange={(e) =>
+                            setEditedTrade({
+                              ...editedTrade,
+                              symbol: e.target.value.toUpperCase(),
+                            })
+                          }
+                          className="bg-gray-700 text-white rounded px-2 py-1 w-20 text-sm"
+                        />
+                      ) : (
+                        trade.symbol
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {isEditing ? (
+                        <select
+                          value={editedTrade.side}
+                          onChange={(e) =>
+                            setEditedTrade({
+                              ...editedTrade,
+                              side: e.target.value as "LONG" | "SHORT",
+                            })
+                          }
+                          className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+                        >
+                          <option value="LONG">LONG</option>
+                          <option value="SHORT">SHORT</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            trade.side === "LONG"
+                              ? "bg-green-500/10 text-green-500"
+                              : "bg-red-500/10 text-red-500"
+                          }`}
+                        >
+                          {trade.side}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editedTrade.entry_price}
+                          onChange={(e) =>
+                            setEditedTrade({
+                              ...editedTrade,
+                              entry_price: parseFloat(e.target.value),
+                            })
+                          }
+                          className="bg-gray-700 text-white rounded px-2 py-1 w-24 text-sm"
+                        />
+                      ) : (
+                        `$${trade.entry_price}`
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editedTrade.exit_price || ""}
+                          onChange={(e) =>
+                            setEditedTrade({
+                              ...editedTrade,
+                              exit_price: e.target.value
+                                ? parseFloat(e.target.value)
+                                : undefined,
+                            })
+                          }
+                          className="bg-gray-700 text-white rounded px-2 py-1 w-24 text-sm"
+                          placeholder="-"
+                        />
+                      ) : trade.exit_price ? (
+                        `$${trade.exit_price}`
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          value={editedTrade.quantity}
+                          onChange={(e) =>
+                            setEditedTrade({
+                              ...editedTrade,
+                              quantity: parseInt(e.target.value),
+                            })
+                          }
+                          className="bg-gray-700 text-white rounded px-2 py-1 w-16 text-sm"
+                        />
+                      ) : (
+                        trade.quantity
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {isEditing &&
+                      editedTrade.status === "CLOSED" &&
+                      editedTrade.entry_price &&
+                      editedTrade.exit_price ? (
+                        <span
+                          className={
+                            calculatePnL(editedTrade) >= 0
+                              ? "text-green-500"
+                              : "text-red-500"
+                          }
+                        >
+                          ${calculatePnL(editedTrade).toFixed(2)}
+                        </span>
+                      ) : trade.pnl !== undefined && trade.pnl !== null ? (
+                        <span
+                          className={
+                            trade.pnl >= 0 ? "text-green-500" : "text-red-500"
+                          }
+                        >
+                          ${trade.pnl.toFixed(2)}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {isEditing ? (
+                        <select
+                          value={editedTrade.status}
+                          onChange={(e) => {
+                            const newStatus = e.target.value as
+                              | "OPEN"
+                              | "CLOSED";
+                            setEditedTrade({
+                              ...editedTrade,
+                              status: newStatus,
+                              exit_date:
+                                newStatus === "OPEN"
+                                  ? undefined
+                                  : editedTrade.exit_date,
+                              exit_price:
+                                newStatus === "OPEN"
+                                  ? undefined
+                                  : editedTrade.exit_price,
+                            });
+                          }}
+                          className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
+                        >
+                          <option value="OPEN">OPEN</option>
+                          <option value="CLOSED">CLOSED</option>
+                        </select>
+                      ) : (
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            trade.status === "OPEN"
+                              ? "bg-blue-500/10 text-blue-500"
+                              : "bg-gray-500/10 text-gray-400"
+                          }`}
+                        >
+                          {trade.status}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <div className="flex items-center space-x-2">
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={handleSaveEdit}
+                              className="text-green-500 hover:text-green-400"
+                              title="Save"
+                            >
+                              <Save className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="text-gray-400 hover:text-white"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleEdit(trade)}
+                              className="text-gray-400 hover:text-white"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(trade.id)}
+                              className="text-gray-400 hover:text-red-500"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
@@ -311,6 +605,119 @@ export default function TradesPage() {
           )}
         </div>
       </div>
+
+      {/* Notes Section for Editing */}
+      {editingId && (
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+          <h3 className="text-lg font-semibold text-white mb-4">
+            Edit Trade Details
+          </h3>
+          <div className="space-y-4">
+            {editedTrade.status === "CLOSED" && (
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Exit Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editedTrade.exit_date?.slice(0, 16) || ""}
+                  onChange={(e) =>
+                    setEditedTrade({
+                      ...editedTrade,
+                      exit_date: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Commission
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={editedTrade.commission || ""}
+                onChange={(e) =>
+                  setEditedTrade({
+                    ...editedTrade,
+                    commission: e.target.value ? parseFloat(e.target.value) : 0,
+                  })
+                }
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Notes
+              </label>
+              <textarea
+                value={editedTrade.notes || ""}
+                onChange={(e) =>
+                  setEditedTrade({ ...editedTrade, notes: e.target.value })
+                }
+                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-blue-500"
+                rows={3}
+                placeholder="Add any notes about this trade..."
+              />
+            </div>
+
+            {editedTrade.status === "CLOSED" &&
+              editedTrade.entry_price &&
+              editedTrade.exit_price &&
+              editedTrade.quantity && (
+                <div className="bg-gray-700 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-2">Trade Summary</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-400">Gross P&L:</p>
+                      <p
+                        className={`font-medium ${
+                          calculatePnL(editedTrade) >= 0
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }`}
+                      >
+                        ${calculatePnL(editedTrade).toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">Percentage:</p>
+                      <p
+                        className={`font-medium ${
+                          calculatePercentageGain(editedTrade) >= 0
+                            ? "text-green-500"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {calculatePercentageGain(editedTrade).toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={handleCancelEdit}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
