@@ -5,14 +5,24 @@ import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { format, parseISO } from "date-fns";
 import Link from "next/link";
-import { Plus, Edit2, Trash2, Filter, Save, X, Check } from "lucide-react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Filter,
+  Save,
+  X,
+  Check,
+  Search,
+} from "lucide-react";
 
 export default function TradesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
-  const [sortBy, setSortBy] = useState<"date" | "pnl">("date");
+  const [sortBy, setSortBy] = useState<"date" | "pnl" | "symbol">("date");
+  const [searchSymbol, setSearchSymbol] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedTrade, setEditedTrade] = useState<Partial<Trade>>({});
   const supabase = createClient();
@@ -23,7 +33,7 @@ export default function TradesPage() {
 
   useEffect(() => {
     filterAndSortTrades();
-  }, [trades, filter, sortBy]);
+  }, [trades, filter, sortBy, searchSymbol]);
 
   const fetchTrades = async () => {
     try {
@@ -54,6 +64,13 @@ export default function TradesPage() {
       filtered = filtered.filter((trade) => trade.status === filter);
     }
 
+    // Apply symbol search
+    if (searchSymbol.trim()) {
+      filtered = filtered.filter((trade) =>
+        trade.symbol.toLowerCase().includes(searchSymbol.toLowerCase())
+      );
+    }
+
     filtered.sort((a, b) => {
       if (sortBy === "date") {
         return (
@@ -61,6 +78,8 @@ export default function TradesPage() {
         );
       } else if (sortBy === "pnl") {
         return (b.pnl || 0) - (a.pnl || 0);
+      } else if (sortBy === "symbol") {
+        return a.symbol.localeCompare(b.symbol);
       }
       return 0;
     });
@@ -292,6 +311,19 @@ export default function TradesPage() {
       {/* Filters and Sorting */}
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
         <div className="flex flex-wrap gap-4 items-center">
+          {/* Symbol Search */}
+          <div className="flex items-center gap-2">
+            <Search className="w-4 h-4 text-neutral-400" />
+            <input
+              type="text"
+              value={searchSymbol}
+              onChange={(e) => setSearchSymbol(e.target.value)}
+              placeholder="Search symbol"
+              className="px-3 py-1 bg-neutral-800 text-white text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-white placeholder-neutral-500"
+            />
+          </div>
+
+          {/* Status Filter */}
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
             <span className="text-gray-400 text-sm">Filter:</span>
@@ -312,6 +344,7 @@ export default function TradesPage() {
             </div>
           </div>
 
+          {/* Sort By */}
           <div className="flex items-center gap-2">
             <span className="text-gray-400 text-sm">Sort by:</span>
             <select
@@ -321,6 +354,7 @@ export default function TradesPage() {
             >
               <option value="date">Date</option>
               <option value="pnl">P&L</option>
+              <option value="symbol">Symbol</option>
             </select>
           </div>
         </div>
