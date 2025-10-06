@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { format, parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import Link from "next/link";
 import { Plus, Edit2, Trash2, Filter, Save, X, Search } from "lucide-react";
+import { calculateFuturesPnL } from "@/lib/futures-specs";
 
 export default function TradesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -100,14 +102,23 @@ export default function TradesPage() {
   };
 
   const calculatePnL = (trade: Partial<Trade>) => {
-    if (!trade.entry_price || !trade.exit_price || !trade.quantity) return 0;
+    if (
+      !trade.entry_price ||
+      !trade.exit_price ||
+      !trade.quantity ||
+      !trade.symbol
+    )
+      return 0;
 
-    const priceDiff =
-      trade.side === "LONG"
-        ? trade.exit_price - trade.entry_price
-        : trade.entry_price - trade.exit_price;
+    const grossPnL = calculateFuturesPnL(
+      trade.symbol,
+      trade.entry_price,
+      trade.exit_price,
+      trade.quantity,
+      trade.side!
+    );
 
-    return priceDiff * trade.quantity - (trade.commission || 0);
+    return grossPnL - (trade.commission || 0);
   };
 
   const calculatePercentageGain = (trade: Partial<Trade>) => {
@@ -445,7 +456,11 @@ export default function TradesPage() {
                           className="bg-gray-700 text-white rounded px-2 py-1 text-sm"
                         />
                       ) : (
-                        format(parseISO(trade.entry_date), "MMM dd, yyyy")
+                        formatInTimeZone(
+                          parseISO(trade.entry_date),
+                          Intl.DateTimeFormat().resolvedOptions().timeZone,
+                          "MMM dd, yyyy"
+                        )
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">

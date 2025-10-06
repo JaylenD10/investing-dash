@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowLeft } from "lucide-react";
+import {
+  calculateFuturesPnL,
+  getContractSpecs,
+  FUTURES_CONTRACTS,
+  FuturesContract,
+} from "@/lib/futures-specs";
 
 const tradeSchema = z.object({
   symbol: z.string().min(1, "Symbol is required"),
@@ -25,6 +31,9 @@ type TradeFormData = z.infer<typeof tradeSchema>;
 export default function NewTradePage() {
   const [loading, setLoading] = useState(false);
   const [tradeStatus, setTradeStatus] = useState<"OPEN" | "CLOSED">("CLOSED");
+  const [contractInfo, setContractInfo] = useState<FuturesContract | null>(
+    null
+  );
   const router = useRouter();
   const supabase = createClient();
 
@@ -45,16 +54,21 @@ export default function NewTradePage() {
   const watchEntryPrice = watch("entry_price");
   const watchExitPrice = watch("exit_price");
   const watchQuantity = watch("quantity");
+  const watchSymbol = watch("symbol");
 
   const calculatePnL = () => {
-    if (!watchEntryPrice || !watchExitPrice || !watchQuantity) return 0;
+    if (!watchEntryPrice || !watchExitPrice || !watchQuantity || !watchSymbol)
+      return 0;
 
-    const priceDiff =
-      watchSide === "LONG"
-        ? watchExitPrice - watchEntryPrice
-        : watchEntryPrice - watchExitPrice;
+    const grossPnL = calculateFuturesPnL(
+      watchSymbol,
+      watchEntryPrice,
+      watchExitPrice,
+      watchQuantity,
+      watchSide
+    );
 
-    return priceDiff * watchQuantity;
+    return grossPnL - (watch("commission") || 0);
   };
 
   const calculatePercentageGain = () => {
@@ -77,18 +91,24 @@ export default function NewTradePage() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
+      const localEntryDate = new Date(data.entry_date).toISOString();
+      const localExitDate = data.exit_date
+        ? new Date(data.exit_date).toISOString()
+        : undefined;
+
       const tradeData = {
+        ...data,
         user_id: user.id,
         symbol: data.symbol.toUpperCase(),
         side: data.side,
-        entry_date: data.entry_date,
+        entry_date: localEntryDate,
         entry_price: data.entry_price,
         quantity: data.quantity,
         commission: data.commission || 0,
         notes: data.notes || "",
         status: tradeStatus,
         ...(tradeStatus === "CLOSED" && {
-          exit_date: data.exit_date,
+          exit_date: localExitDate,
           exit_price: data.exit_price,
           pnl: calculatePnL() - (data.commission || 0),
           percentage_gain: calculatePercentageGain(),
@@ -175,6 +195,14 @@ export default function NewTradePage() {
     router.back();
   };
 
+  useEffect(() => {
+    const symbol = watch("symbol");
+    if (symbol) {
+      const specs = getContractSpecs(symbol);
+      setContractInfo(specs);
+    }
+  }, [watch("symbol")]);
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
@@ -187,6 +215,23 @@ export default function NewTradePage() {
         </button>
         <h1 className="text-3xl font-bold text-white">Add New Trade</h1>
         <p className="text-gray-400 mt-2">Record your trading activity</p>
+        {contractInfo && (
+          <div className="bg-neutral-800 rounded-lg p-4 mt-4">
+            <h4 className="text-white font-medium mb-2">
+              Contract Specifications
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="text-neutral-400">Contract:</div>
+              <div className="text-white">{contractInfo.name}</div>
+              <div className="text-neutral-400">Point Value:</div>
+              <div className="text-white">${contractInfo.pointValue}</div>
+              <div className="text-neutral-400">Tick Size:</div>
+              <div className="text-white">{contractInfo.tickSize}</div>
+              <div className="text-neutral-400">Tick Value:</div>
+              <div className="text-white">${contractInfo.tickValue}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
@@ -231,9 +276,30 @@ export default function NewTradePage() {
               <input
                 type="text"
                 {...register("symbol")}
+                list="futures-symbols"
+                onChange={(e) => {
+                  const specs = getContractSpecs(e.target.value);
+                  setContractInfo(specs);
+                }}
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
                 placeholder="e.g., ES, NQ"
               />
+              <datalist id="futures-symbols">
+                <option value="ES">ES - E-mini S&P 500</option>
+                <option value="MES">MES - Micro E-mini S&P</option>
+                <option value="NQ">NQ - E-mini Nasdaq</option>
+                <option value="MNQ">MNQ - Micro E-mini Nasdaq</option>
+                <option value="RTY">RTY - E-mini Russell</option>
+                <option value="YM">YM - E-mini Dow</option>
+                <option value="CL">CL - Crude Oil</option>
+                <option value="MCL">MCL - Micro Crude Oil</option>
+                <option value="NG">NG - Natural Gas</option>
+                <option value="GC">GC - Gold</option>
+                <option value="MGC">MGC - Micro Gold</option>
+                <option value="6E">6E - Euro FX</option>
+                <option value="ZN">ZN - 10-Year T-Note</option>
+                <option value="ZB">ZB - 30-Year T-Bond</option>
+              </datalist>
               {errors.symbol && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.symbol.message}

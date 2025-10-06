@@ -194,7 +194,7 @@ export default function SettingsPage() {
     { id: "profile", label: "Profile", icon: User },
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security", label: "Security", icon: Shield },
-    { id: "billing", label: "Billing", icon: CreditCard },
+    //{ id: "billing", label: "Billing", icon: CreditCard },
   ];
 
   return (
@@ -530,15 +530,15 @@ export default function SettingsPage() {
         )}
 
         {/* Billing Tab */}
-        {activeTab === "billing" && (
+        {/* {activeTab === "billing" && (
           <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
             <h2 className="text-lg font-semibold text-white mb-6">
               Billing & Subscription
             </h2>
 
-            <div className="space-y-6">
-              {/* Current Plan */}
-              <div className="bg-gray-700 rounded-lg p-6">
+            <div className="space-y-6"> */}
+        {/* Current Plan */}
+        {/* <div className="bg-gray-700 rounded-lg p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-white font-medium">Current Plan</h3>
                   <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
@@ -562,10 +562,10 @@ export default function SettingsPage() {
                     Manual trade entry
                   </li>
                 </ul>
-              </div>
+              </div> */}
 
-              {/* Upgrade Options */}
-              <div>
+        {/* Upgrade Options */}
+        {/* <div>
                 <h3 className="text-white font-medium mb-4">Available Plans</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-gray-700 rounded-lg p-6 border-2 border-gray-600 hover:border-blue-500 transition-colors">
@@ -630,10 +630,10 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
-              {/* Payment Method */}
-              <div>
+        {/* Payment Method */}
+        {/* <div>
                 <h3 className="text-white font-medium mb-4">Payment Method</h3>
                 <div className="bg-gray-700 rounded-lg p-4">
                   <p className="text-gray-400 text-sm">
@@ -644,10 +644,10 @@ export default function SettingsPage() {
                     Add Payment Method
                   </button>
                 </div>
-              </div>
+              </div> */}
 
-              {/* Billing History */}
-              <div>
+        {/* Billing History */}
+        {/* <div>
                 <h3 className="text-white font-medium mb-4">Billing History</h3>
                 <div className="bg-gray-700 rounded-lg p-4">
                   <p className="text-gray-400 text-sm text-center py-8">
@@ -657,7 +657,7 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
