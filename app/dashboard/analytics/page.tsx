@@ -22,7 +22,13 @@ import {
   Radar,
 } from "recharts";
 import { differenceInHours } from "date-fns";
-import { TrendingUp, TrendingDown, Clock, Target } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  Target,
+  Activity,
+} from "lucide-react";
 
 export default function AnalyticsPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -80,6 +86,16 @@ export default function AnalyticsPage() {
       closedTrades[0]
     );
 
+    // Profit Factor calculation
+    const winningTrades = closedTrades.filter((t) => t.pnl && t.pnl > 0);
+    const losingTrades = closedTrades.filter((t) => t.pnl && t.pnl < 0);
+    const totalWins = winningTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+    const totalLosses = Math.abs(
+      losingTrades.reduce((sum, t) => sum + (t.pnl || 0), 0)
+    );
+    const profitFactor =
+      totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 999.99 : 0;
+
     // Average holding time
     const holdingTimes = closedTrades
       .filter((t) => t.exit_date)
@@ -116,11 +132,18 @@ export default function AnalyticsPage() {
       avgHoldingTime,
       maxWinStreak,
       maxLossStreak,
+      profitFactor,
     };
   };
 
-  const { bestTrade, worstTrade, avgHoldingTime, maxWinStreak, maxLossStreak } =
-    calculateMetrics();
+  const {
+    bestTrade,
+    worstTrade,
+    avgHoldingTime,
+    maxWinStreak,
+    maxLossStreak,
+    profitFactor,
+  } = calculateMetrics();
 
   // Prepare data for charts
   const prepareSymbolPerformance = () => {
@@ -232,6 +255,33 @@ export default function AnalyticsPage() {
               <p className="text-gray-500 text-xs mt-1">{worstTrade?.symbol}</p>
             </div>
             <TrendingDown className="w-8 h-8 text-red-500" />
+          </div>
+        </div>
+
+        <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-neutral-400 text-sm">Profit Factor</p>
+              <p className="text-2xl font-bold text-white mt-2">
+                {profitFactor === 999.99 ? "∞" : profitFactor.toFixed(2)}
+              </p>
+              <p className="text-neutral-500 text-xs mt-1">
+                {profitFactor > 1.5
+                  ? "Excellent"
+                  : profitFactor > 1.0
+                  ? "Good"
+                  : "Needs Improvement"}
+              </p>
+            </div>
+            <Activity
+              className={`w-8 h-8 ${
+                profitFactor > 1.5
+                  ? "text-green-500"
+                  : profitFactor > 1.0
+                  ? "text-yellow-500"
+                  : "text-red-500"
+              }`}
+            />
           </div>
         </div>
 

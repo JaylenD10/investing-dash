@@ -7,7 +7,7 @@ import { format, parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import Link from "next/link";
 import { Plus, Edit2, Trash2, Filter, Save, X, Search } from "lucide-react";
-import { calculateFuturesPnL } from "@/lib/futures-specs";
+import { calculateFuturesPnL, getContractSpecs } from "@/lib/futures-specs";
 
 export default function TradesPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
