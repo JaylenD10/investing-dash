@@ -10,7 +10,6 @@ import { ArrowLeft } from "lucide-react";
 import {
   calculateFuturesPnL,
   getContractSpecs,
-  FUTURES_CONTRACTS,
   FuturesContract,
 } from "@/lib/futures-specs";
 
@@ -196,12 +195,11 @@ export default function NewTradePage() {
   };
 
   useEffect(() => {
-    const symbol = watch("symbol");
-    if (symbol) {
-      const specs = getContractSpecs(symbol);
+    if (watchSymbol) {
+      const specs = getContractSpecs(watchSymbol);
       setContractInfo(specs);
     }
-  }, [watch("symbol")]);
+  }, [watchSymbol]);
 
   return (
     <div className="max-w-2xl mx-auto">

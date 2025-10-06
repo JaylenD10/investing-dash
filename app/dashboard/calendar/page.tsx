@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Trade, DailyStats } from "@/types/database";
 import {
@@ -11,15 +11,12 @@ import {
   startOfWeek,
   endOfWeek,
   isSameMonth,
-  isSameDay,
   parseISO,
-  getWeek,
   isToday,
 } from "date-fns";
 import {
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon,
   TrendingUp,
   TrendingDown,
   X,
@@ -46,11 +43,7 @@ export default function CalendarPage() {
   });
   const supabase = createClient();
 
-  useEffect(() => {
-    fetchCalendarData();
-  }, [currentDate]);
-
-  const fetchCalendarData = async () => {
+  const fetchCalendarData = useCallback(async () => {
     try {
       const {
         data: { user },
@@ -100,7 +93,11 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDate, supabase]);
+
+  useEffect(() => {
+    fetchCalendarData();
+  }, [currentDate, fetchCalendarData]);
 
   const generateCalendarDays = (): CalendarDay[] => {
     const monthStart = startOfMonth(currentDate);

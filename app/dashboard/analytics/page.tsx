@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Trade, DailyStats } from "@/types/database";
 import {
@@ -32,18 +32,11 @@ import {
 
 export default function AnalyticsPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
+  const [, setDailyStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState<
-    "week" | "month" | "year" | "all"
-  >("month");
   const supabase = createClient();
 
-  useEffect(() => {
-    fetchAnalyticsData();
-  }, []);
-
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     try {
       const {
         data: { user },
@@ -69,7 +62,11 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
 
   // Calculate metrics
   const calculateMetrics = () => {

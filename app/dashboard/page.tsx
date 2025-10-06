@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Trade, DailyStats } from "@/types/database";
 import {
@@ -21,6 +21,7 @@ import {
   ArrowDownRight,
   TrendingUp,
   Activity,
+  LucideIcon,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -30,6 +31,14 @@ interface DashboardStats {
   avgWin: number;
   avgLoss: number;
   profitFactor: number;
+}
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon: LucideIcon;
+  trend?: "up" | "down" | "neutral";
 }
 
 export default function DashboardPage() {
@@ -46,11 +55,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const {
         data: { user },
@@ -84,7 +89,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const calculateDashboardStats = (trades: Trade[]) => {
     const closedTrades = trades.filter((t) => t.status === "CLOSED");
@@ -128,7 +137,13 @@ export default function DashboardPage() {
     };
   });
 
-  const StatCard = ({ title, value, subtitle, icon: Icon, trend }: any) => (
+  const StatCard = ({
+    title,
+    value,
+    subtitle,
+    icon: Icon,
+    trend,
+  }: StatCardProps) => (
     <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
       <div className="flex items-center justify-between">
         <div>

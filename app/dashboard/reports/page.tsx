@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   Upload,
@@ -33,16 +33,12 @@ export default function ReportsPage() {
   const [filter, setFilter] = useState<"all" | "broker" | "custom">("all");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadNotes, setUploadNotes] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [previewReport, setPreviewReport] = useState<Report | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const supabase = createClient();
 
-  useEffect(() => {
-    fetchReports();
-  }, []);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       const {
         data: { user },
@@ -109,7 +105,11 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase.auth, supabase.storage]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -194,7 +194,7 @@ export default function ReportsPage() {
       if (previewReport?.id === report.id) {
         setPreviewReport(null);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting report:", error);
       setError("Failed to delete report");
     }
@@ -338,13 +338,13 @@ export default function ReportsPage() {
           <span className="text-gray-400 text-sm">Filter:</span>
           <div className="flex gap-2">
             {[
-              { value: "all", label: "All Reports" },
-              { value: "broker", label: "Broker Reports" },
-              { value: "custom", label: "Custom Reports" },
+              { value: "all" as const, label: "All Reports" },
+              { value: "broker" as const, label: "Broker Reports" },
+              { value: "custom" as const, label: "Custom Reports" },
             ].map((option) => (
               <button
                 key={option.value}
-                onClick={() => setFilter(option.value as any)}
+                onClick={() => setFilter(option.value)}
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                   filter === option.value
                     ? "bg-blue-600 text-white"

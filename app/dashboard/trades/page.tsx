@@ -1,34 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import Link from "next/link";
 import { Plus, Edit2, Trash2, Filter, Save, X, Search } from "lucide-react";
-import { calculateFuturesPnL, getContractSpecs } from "@/lib/futures-specs";
+import { calculateFuturesPnL } from "@/lib/futures-specs";
 
 export default function TradesPage() {
+  type SortBy = "date" | "pnl" | "symbol";
+
   const [trades, setTrades] = useState<Trade[]>([]);
   const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"ALL" | "OPEN" | "CLOSED">("ALL");
-  const [sortBy, setSortBy] = useState<"date" | "pnl" | "symbol">("date");
+  const [sortBy, setSortBy] = useState<SortBy>("date");
   const [searchSymbol, setSearchSymbol] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedTrade, setEditedTrade] = useState<Partial<Trade>>({});
   const supabase = createClient();
 
-  useEffect(() => {
-    fetchTrades();
-  }, []);
-
-  useEffect(() => {
-    filterAndSortTrades();
-  }, [trades, filter, sortBy, searchSymbol]);
-
-  const fetchTrades = async () => {
+  const fetchTrades = useCallback(async () => {
     try {
       const {
         data: { user },
@@ -48,9 +42,13 @@ export default function TradesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
 
-  const filterAndSortTrades = () => {
+  useEffect(() => {
+    fetchTrades();
+  }, [fetchTrades]);
+
+  const filterAndSortTrades = useCallback(() => {
     let filtered = [...trades];
 
     if (filter !== "ALL") {
@@ -78,7 +76,11 @@ export default function TradesPage() {
     });
 
     setFilteredTrades(filtered);
-  };
+  }, [trades, filter, sortBy, searchSymbol]);
+
+  useEffect(() => {
+    filterAndSortTrades();
+  }, [trades, filter, sortBy, searchSymbol, filterAndSortTrades]);
 
   const handleEdit = (trade: Trade) => {
     setEditingId(trade.id);
@@ -366,10 +368,10 @@ export default function TradesPage() {
             <Filter className="w-4 h-4 text-gray-400" />
             <span className="text-gray-400 text-sm">Filter:</span>
             <div className="flex gap-2">
-              {["ALL", "OPEN", "CLOSED"].map((filterOption) => (
+              {(["ALL", "OPEN", "CLOSED"] as const).map((filterOption) => (
                 <button
                   key={filterOption}
-                  onClick={() => setFilter(filterOption as any)}
+                  onClick={() => setFilter(filterOption)}
                   className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                     filter === filterOption
                       ? "bg-blue-600 text-white"
@@ -387,7 +389,7 @@ export default function TradesPage() {
             <span className="text-gray-400 text-sm">Sort by:</span>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
               className="px-3 py-1 bg-gray-700 text-white text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="date">Date</option>

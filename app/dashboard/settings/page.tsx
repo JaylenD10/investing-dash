@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Bell, Shield, CreditCard, Save, Check, X } from "lucide-react";
+import { User, Bell, Shield, Save, Check, X } from "lucide-react";
 import { Profile } from "@/types/database";
 
 const profileSchema = z.object({
@@ -40,7 +40,7 @@ export default function SettingsPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [, setProfile] = useState<Profile | null>(null);
   const [notifications, setNotifications] = useState({
     emailTrades: true,
     emailReports: false,
@@ -58,11 +58,7 @@ export default function SettingsPage() {
     resolver: zodResolver(passwordSchema),
   });
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const {
         data: { user },
@@ -86,7 +82,11 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("Error fetching profile:", error);
     }
-  };
+  }, [profileForm, supabase]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   const handleProfileUpdate = async (data: ProfileFormData) => {
     setLoading(true);
@@ -212,7 +212,15 @@ export default function SettingsPage() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() =>
+                  setActiveTab(
+                    tab.id as
+                      | "profile"
+                      | "notifications"
+                      | "security"
+                      | "billing"
+                  )
+                }
                 className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.id
                     ? "border-blue-500 text-blue-500"
