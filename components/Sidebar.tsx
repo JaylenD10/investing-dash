@@ -49,7 +49,7 @@ export default function Sidebar() {
       <div className="p-6 flex items-center justify-between">
         {!isCollapsed && (
           <div>
-            <h1 className="text-2xl font-bold text-white">TradeTracker</h1>
+            <h1 className="text-2xl font-bold text-white">Trade Syndicate</h1>
             <p className="text-gray-400 text-sm mt-1">Trading Journal</p>
           </div>
         )}
