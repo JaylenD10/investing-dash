@@ -381,55 +381,57 @@ export default function DashboardPage() {
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+          {/* Period Summary */}
+          <div className="mt-4 pt-4 border-t border-neutral-800 grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="text-neutral-400">Period Start</p>
+              <p className="text-white font-medium">
+                ${filteredChartData[0]?.cumulativePnL || 0}
+              </p>
+            </div>
+            <div>
+              <p className="text-neutral-400">Period End</p>
+              <p className="text-white font-medium">
+                $
+                {filteredChartData[filteredChartData.length - 1]
+                  ?.cumulativePnL || 0}
+              </p>
+            </div>
+            <div>
+              <p className="text-neutral-400">Change</p>
+              <p
+                className={`font-medium ${
+                  periodStats.pnl >= 0 ? "text-green-500" : "text-red-500"
+                }`}
+              >
+                {(() => {
+                  const startValue = filteredChartData[0]?.cumulativePnL || 0;
+                  const endValue =
+                    filteredChartData[filteredChartData.length - 1]
+                      ?.cumulativePnL || 0;
 
-        {/* Period Summary */}
-        <div className="mt-4 pt-4 border-t border-neutral-800 grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <p className="text-neutral-400">Period Start</p>
-            <p className="text-white font-medium">
-              ${filteredChartData[0]?.cumulativePnL || 0}
-            </p>
-          </div>
-          <div>
-            <p className="text-neutral-400">Period End</p>
-            <p className="text-white font-medium">
-              $
-              {filteredChartData[filteredChartData.length - 1]?.cumulativePnL ||
-                0}
-            </p>
-          </div>
-          <div>
-            <p className="text-neutral-400">Change</p>
-            <p
-              className={`font-medium ${
-                periodStats.pnl >= 0 ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {(() => {
-                const startValue = filteredChartData[0]?.cumulativePnL || 0;
-                const endValue =
-                  filteredChartData[filteredChartData.length - 1]
-                    ?.cumulativePnL || 0;
+                  // If no trades or no change
+                  if (
+                    filteredChartData.length === 0 ||
+                    startValue === endValue
+                  ) {
+                    return "0.00%";
+                  }
 
-                // If no trades or no change
-                if (filteredChartData.length === 0 || startValue === endValue) {
-                  return "0.00%";
-                }
+                  // If starting from 0 (first trades in period)
+                  if (startValue === 0) {
+                    return endValue >= 0 ? "+100.00%" : "-100.00%";
+                  }
 
-                // If starting from 0 (first trades in period)
-                if (startValue === 0) {
-                  return endValue >= 0 ? "+100.00%" : "-100.00%";
-                }
-
-                // Normal percentage calculation
-                const percentChange =
-                  ((endValue - startValue) / Math.abs(startValue)) * 100;
-                return `${percentChange >= 0 ? "+" : ""}${percentChange.toFixed(
-                  2
-                )}%`;
-              })()}
-            </p>
+                  // Normal percentage calculation
+                  const percentChange =
+                    ((endValue - startValue) / Math.abs(startValue)) * 100;
+                  return `${
+                    percentChange >= 0 ? "+" : ""
+                  }${percentChange.toFixed(2)}%`;
+                })()}
+              </p>
+            </div>
           </div>
         </div>
 
