@@ -15,7 +15,15 @@ import {
   ResponsiveContainer,
   ComposedChart,
 } from "recharts";
-import { format, parseISO } from "date-fns";
+import {
+  format,
+  parseISO,
+  startOfYear,
+  subDays,
+  subMonths,
+  subYears,
+  isAfter,
+} from "date-fns";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -41,6 +49,8 @@ interface StatCardProps {
   trend?: "up" | "down" | "neutral";
 }
 
+type TimePeriod = "ALL" | "YTD" | "1Y" | "3M" | "7D";
+
 export default function DashboardPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
@@ -52,8 +62,129 @@ export default function DashboardPage() {
     avgLoss: 0,
     profitFactor: 0,
   });
+  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("ALL");
+  const [filteredChartData, setFilteredChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+
+  const filterTradesByPeriod = useCallback(
+    (trades: Trade[], period: TimePeriod) => {
+      const now = new Date();
+      let startDate: Date;
+
+      switch (period) {
+        case "YTD":
+          startDate = startOfYear(now);
+          break;
+        case "1Y":
+          startDate = subYears(now, 1);
+          break;
+        case "3M":
+          startDate = subMonths(now, 3);
+          break;
+        case "7D":
+          startDate = subDays(now, 7);
+          break;
+        case "ALL":
+        default:
+          return trades;
+      }
+
+      return trades.filter((trade) =>
+        isAfter(parseISO(trade.entry_date), startDate)
+      );
+    },
+    []
+  );
+
+  // Update chart data when period changes
+  useEffect(() => {
+    if (trades.length > 0) {
+      const filteredTrades = filterTradesByPeriod(trades, selectedPeriod);
+
+      // Group trades by date for the selected period
+      const tradesByDate: { [date: string]: Trade[] } = {};
+      filteredTrades.forEach((trade) => {
+        const date = format(parseISO(trade.entry_date), "yyyy-MM-dd");
+        if (!tradesByDate[date]) {
+          tradesByDate[date] = [];
+        }
+        tradesByDate[date].push(trade);
+      });
+
+      const dailyStatsMap: { [date: string]: DailyStats } = {};
+      dailyStats.forEach((stat) => {
+        dailyStatsMap[stat.date] = stat;
+      });
+
+      // Calculate daily P&L and cumulative P&L
+      const sortedDates = Object.keys(tradesByDate).sort();
+      let cumulativePnL = 0;
+
+      const chartData = sortedDates.map((date) => {
+        const dayTrades = tradesByDate[date];
+        const dayPnL = dayTrades
+          .filter((t) => t.status === "CLOSED" && t.pnl)
+          .reduce((sum, t) => sum + (t.pnl || 0), 0);
+
+        cumulativePnL += dayPnL;
+
+        return {
+          date: format(parseISO(date), "MMM dd"),
+          fullDate: date,
+          pnl: dayPnL,
+          cumulativePnL,
+          trades: dayPnL,
+        };
+      });
+
+      setFilteredChartData(chartData);
+    }
+  }, [trades, selectedPeriod, filterTradesByPeriod]);
+
+  // Period selector component
+  const PeriodSelector = () => (
+    <div className="flex space-x-2">
+      {(["ALL", "YTD", "1Y", "3M", "7D"] as TimePeriod[]).map((period) => (
+        <button
+          key={period}
+          onClick={() => setSelectedPeriod(period)}
+          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+            selectedPeriod === period
+              ? "bg-white text-black"
+              : "bg-neutral-800 text-neutral-400 hover:text-white"
+          }`}
+        >
+          {period === "ALL" ? "All Time" : period}
+        </button>
+      ))}
+    </div>
+  );
+
+  // Calculate stats for selected period
+  const calculatePeriodStats = useCallback(() => {
+    const filteredTrades = filterTradesByPeriod(trades, selectedPeriod);
+    const closedTrades = filteredTrades.filter((t) => t.status === "CLOSED");
+
+    const periodPnL = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+    const periodWinRate =
+      closedTrades.length > 0
+        ? (closedTrades.filter((t) => t.pnl && t.pnl > 0).length /
+            closedTrades.length) *
+          100
+        : 0;
+
+    return {
+      pnl: periodPnL,
+      winRate: periodWinRate,
+      tradeCount: filteredTrades.length,
+      startValue: filteredChartData[0]?.cumulativePnL || 0,
+      endValue:
+        filteredChartData[filteredChartData.length - 1]?.cumulativePnL || 0,
+    };
+  }, [trades, selectedPeriod, filterTradesByPeriod, filteredChartData]);
+
+  const periodStats = calculatePeriodStats();
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -225,9 +356,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Cumulative P&L Chart */}
         <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">
-            Cumulative P&L
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Cumulative P&L</h3>
+            <PeriodSelector />
+          </div>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={cumulativeData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -249,6 +381,56 @@ export default function DashboardPage() {
               />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Period Summary */}
+        <div className="mt-4 pt-4 border-t border-neutral-800 grid grid-cols-3 gap-4 text-sm">
+          <div>
+            <p className="text-neutral-400">Period Start</p>
+            <p className="text-white font-medium">
+              ${filteredChartData[0]?.cumulativePnL || 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-neutral-400">Period End</p>
+            <p className="text-white font-medium">
+              $
+              {filteredChartData[filteredChartData.length - 1]?.cumulativePnL ||
+                0}
+            </p>
+          </div>
+          <div>
+            <p className="text-neutral-400">Change</p>
+            <p
+              className={`font-medium ${
+                periodStats.pnl >= 0 ? "text-green-500" : "text-red-500"
+              }`}
+            >
+              {(() => {
+                const startValue = filteredChartData[0]?.cumulativePnL || 0;
+                const endValue =
+                  filteredChartData[filteredChartData.length - 1]
+                    ?.cumulativePnL || 0;
+
+                // If no trades or no change
+                if (filteredChartData.length === 0 || startValue === endValue) {
+                  return "0.00%";
+                }
+
+                // If starting from 0 (first trades in period)
+                if (startValue === 0) {
+                  return endValue >= 0 ? "+100.00%" : "-100.00%";
+                }
+
+                // Normal percentage calculation
+                const percentChange =
+                  ((endValue - startValue) / Math.abs(startValue)) * 100;
+                return `${percentChange >= 0 ? "+" : ""}${percentChange.toFixed(
+                  2
+                )}%`;
+              })()}
+            </p>
+          </div>
         </div>
 
         {/* Daily P&L and Trade Count */}
@@ -274,7 +456,7 @@ export default function DashboardPage() {
               <Line
                 yAxisId="right"
                 type="monotone"
-                dataKey="trades"
+                dataKey="pnl"
                 stroke="#10B981"
                 name="Trades"
               />
