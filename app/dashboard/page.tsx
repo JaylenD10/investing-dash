@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Trade, DailyStats } from "@/types/database";
+import { Trade, DailyStats, ChartDataPoint } from "@/types/database";
 import {
   LineChart,
   Line,
@@ -63,7 +63,9 @@ export default function DashboardPage() {
     profitFactor: 0,
   });
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("ALL");
-  const [filteredChartData, setFilteredChartData] = useState<any[]>([]);
+  const [filteredChartData, setFilteredChartData] = useState<ChartDataPoint[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
@@ -140,7 +142,7 @@ export default function DashboardPage() {
 
       setFilteredChartData(chartData);
     }
-  }, [trades, selectedPeriod, filterTradesByPeriod]);
+  }, [trades, dailyStats, selectedPeriod, filterTradesByPeriod]);
 
   // Period selector component
   const PeriodSelector = () => (

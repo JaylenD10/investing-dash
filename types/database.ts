@@ -35,3 +35,12 @@ export interface Profile {
   created_at: string;
   updated_at: string;
 }
+
+export interface ChartDataPoint {
+  date: string;
+  fullDate: string;
+  pnl: number;
+  cumulativePnL: number;
+  trades: number;
+  winRate?: number;
+}
