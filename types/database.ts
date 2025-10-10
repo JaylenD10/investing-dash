@@ -44,3 +44,23 @@ export interface ChartDataPoint {
   trades: number;
   winRate?: number;
 }
+
+export interface AccountBalance {
+  id: string;
+  user_id: string;
+  starting_balance: number;
+  current_balance: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountTransaction {
+  id: string;
+  user_id: string;
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'STARTING_BALANCE';
+  amount: number;
+  balance_after: number;
+  description?: string;
+  transaction_date: string;
+  created_at: string;
+}

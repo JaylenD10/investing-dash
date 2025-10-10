@@ -2,7 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Trade, DailyStats, ChartDataPoint } from "@/types/database";
+import {
+  Trade,
+  DailyStats,
+  ChartDataPoint,
+  AccountBalance,
+} from "@/types/database";
 import {
   LineChart,
   Line,
@@ -62,6 +67,9 @@ export default function DashboardPage() {
     avgLoss: 0,
     profitFactor: 0,
   });
+  const [accountBalance, setAccountBalance] = useState<AccountBalance | null>(
+    null
+  );
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("ALL");
   const [filteredChartData, setFilteredChartData] = useState<ChartDataPoint[]>(
     []
@@ -209,6 +217,12 @@ export default function DashboardPage() {
         .eq("user_id", user.id)
         .order("date", { ascending: true });
 
+      const { data: accountData } = await supabase
+        .from("account_balances")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
       if (tradesData) {
         setTrades(tradesData);
         calculateDashboardStats(tradesData);
@@ -216,6 +230,10 @@ export default function DashboardPage() {
 
       if (statsData) {
         setDailyStats(statsData);
+      }
+
+      if (accountData) {
+        setAccountBalance(accountData);
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -351,6 +369,36 @@ export default function DashboardPage() {
           subtitle={`Loss: $${dashboardStats.avgLoss.toFixed(2)}`}
           icon={TrendingUp}
           trend="neutral"
+        />
+        <StatCard
+          title="Account Return"
+          value={(() => {
+            if (
+              !accountBalance?.starting_balance ||
+              accountBalance.starting_balance === 0
+            ) {
+              return "N/A";
+            }
+            const totalPnL = dashboardStats.totalPnL;
+            const returnPercentage =
+              (totalPnL / accountBalance.starting_balance) * 100;
+            return `${
+              returnPercentage >= 0 ? "+" : ""
+            }${returnPercentage.toFixed(2)}%`;
+          })()}
+          subtitle={
+            accountBalance
+              ? `Initial $${accountBalance.starting_balance.toFixed(2)}`
+              : "No starting balance set"
+          }
+          icon={TrendingUp}
+          trend={
+            accountBalance && dashboardStats.totalPnL >= 0
+              ? "up"
+              : accountBalance && dashboardStats.totalPnL < 0
+              ? "down"
+              : "neutral"
+          }
         />
       </div>
 

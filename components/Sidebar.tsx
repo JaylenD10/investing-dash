@@ -13,6 +13,7 @@ import {
   Calendar,
   Menu,
   ArrowLeft,
+  Wallet,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,7 @@ const menuItems = [
   { name: "Add Trade", href: "/dashboard/trades/new", icon: PlusCircle },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
+  { name: "Account", href: "/dashboard/account", icon: Wallet },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
