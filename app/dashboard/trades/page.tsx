@@ -275,6 +275,56 @@ export default function TradesPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (
+      !confirm(
+        "Are you sure you want to delete ALL trades? This action cannot be undone."
+      )
+    )
+      return;
+
+    // Double confirmation for safety
+    if (
+      !confirm(
+        "This will permanently delete all your trades and statistics. Are you absolutely sure?"
+      )
+    )
+      return;
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Delete all trades for the user
+      const { error: tradesError } = await supabase
+        .from("trades")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (tradesError) throw tradesError;
+
+      // Delete all daily stats for the user
+      const { error: statsError } = await supabase
+        .from("daily_stats")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (statsError) throw statsError;
+
+      // Clear local state
+      setTrades([]);
+      setFilteredTrades([]);
+
+      // Show success message (you might want to add a toast notification here)
+      alert("All trades have been deleted successfully");
+    } catch (error) {
+      console.error("Error deleting all trades:", error);
+      alert("Error deleting trades. Please try again.");
+    }
+  };
+
   const calculateTotals = () => {
     const totalPnL = filteredTrades.reduce(
       (sum, trade) => sum + (trade.pnl || 0),
@@ -313,13 +363,24 @@ export default function TradesPage() {
           <h1 className="text-3xl font-bold text-white">Trades</h1>
           <p className="text-gray-400 mt-2">Manage your trading history</p>
         </div>
-        <Link
-          href="/dashboard/trades/new"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Trade
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            href="/dashboard/trades/new"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Trade
+          </Link>
+          {trades.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              className="inline-flex items-center px-4 py-2 bg-red-700 hover:bg-red-600 text-white font-medium rounded-lg transition-colors"
+            >
+              <Trash2 className="w-5 h-5 mr-2" />
+              Delete All
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Summary Stats */}

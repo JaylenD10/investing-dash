@@ -14,6 +14,7 @@ import {
   Menu,
   ArrowLeft,
   Wallet,
+  Upload,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,7 @@ const menuItems = [
   { name: "Trades", href: "/dashboard/trades", icon: TrendingUp },
   { name: "Add Trade", href: "/dashboard/trades/new", icon: PlusCircle },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { name: "Import Trades", href: "/dashboard/import", icon: Upload },
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
   { name: "Account", href: "/dashboard/account", icon: Wallet },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
