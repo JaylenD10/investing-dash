@@ -288,6 +288,7 @@ export default function NewTradePage() {
                 <option value="NQ">NQ - E-mini Nasdaq</option>
                 <option value="MNQ">MNQ - Micro E-mini Nasdaq</option>
                 <option value="RTY">RTY - E-mini Russell</option>
+                <option value="M2K">M2K - Micro E-mini Russell</option>
                 <option value="YM">YM - E-mini Dow</option>
                 <option value="CL">CL - Crude Oil</option>
                 <option value="MCL">MCL - Micro Crude Oil</option>

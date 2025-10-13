@@ -82,8 +82,10 @@ export default function ImportPage() {
       if (contract.startsWith("MGC")) return "MGC"; // Micro Gold
       if (contract.startsWith("MES")) return "MES"; // Micro E-mini S&P
       if (contract.startsWith("MNQ")) return "MNQ"; // Micro E-mini Nasdaq
+      if (contract.startsWith("M2K")) return "M2K"; // Micro E-mini Russel
       if (contract.startsWith("ES")) return "ES"; // E-mini S&P
       if (contract.startsWith("NQ")) return "NQ"; // E-mini Nasdaq
+      if (contract.startsWith("RTY")) return "RTY"; // E-mini Russell
       if (contract.startsWith("CL")) return "CL"; // Crude Oil
       if (contract.startsWith("GC")) return "GC"; // Gold
       // Add more mappings as needed

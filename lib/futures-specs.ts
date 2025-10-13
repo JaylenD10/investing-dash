@@ -65,6 +65,17 @@ export const FUTURES_CONTRACTS: Record<string, FuturesContract> = {
     initialMargin: 6820,
     maintenanceMargin: 6200,
   },
+  // Micro E-mini Russell 2000
+  M2K: {
+    symbol: 'M2K',
+    name: 'Micro E-mini Russell 2000',
+    exchange: 'CME',
+    tickSize: 0.1,
+    tickValue: 0.5,
+    pointValue: 5,
+    initialMargin: 6820,
+    maintenanceMargin: 6200,
+  },
   // E-mini Dow Jones
   YM: {
     symbol: 'YM',
