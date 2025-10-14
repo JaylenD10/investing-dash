@@ -290,11 +290,11 @@ export default function NewTradePage() {
                 <option value="RTY">RTY - E-mini Russell</option>
                 <option value="M2K">M2K - Micro E-mini Russell</option>
                 <option value="YM">YM - E-mini Dow</option>
+                <option value="GC">GC - Gold</option>
+                <option value="MGC">MGC - Micro Gold</option>
                 <option value="CL">CL - Crude Oil</option>
                 <option value="MCL">MCL - Micro Crude Oil</option>
                 <option value="NG">NG - Natural Gas</option>
-                <option value="GC">GC - Gold</option>
-                <option value="MGC">MGC - Micro Gold</option>
                 <option value="6E">6E - Euro FX</option>
                 <option value="ZN">ZN - 10-Year T-Note</option>
                 <option value="ZB">ZB - 30-Year T-Bond</option>
@@ -320,24 +320,8 @@ export default function NewTradePage() {
             </div>
           </div>
 
-          {/* Entry Details */}
+          {/* Price Details */}
           <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
-                Entry Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                {...register("entry_date")}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
-              />
-              {errors.entry_date && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.entry_date.message}
-                </p>
-              )}
-            </div>
-
             <div>
               <label className="block text-gray-300 text-sm font-medium mb-2">
                 Entry Price
@@ -355,22 +339,8 @@ export default function NewTradePage() {
                 </p>
               )}
             </div>
-          </div>
 
-          {/* Exit Details (for closed trades) */}
-          {tradeStatus === "CLOSED" && (
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">
-                  Exit Date & Time
-                </label>
-                <input
-                  type="datetime-local"
-                  {...register("exit_date")}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-
+            {tradeStatus === "CLOSED" && (
               <div>
                 <label className="block text-gray-300 text-sm font-medium mb-2">
                   Exit Price
@@ -383,8 +353,39 @@ export default function NewTradePage() {
                   placeholder="0.00"
                 />
               </div>
+            )}
+          </div>
+
+          {/* Date Details */}
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Entry Date & Time
+              </label>
+              <input
+                type="datetime-local"
+                {...register("entry_date")}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
+              />
+              {errors.entry_date && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.entry_date.message}
+                </p>
+              )}
             </div>
-          )}
+            {tradeStatus === "CLOSED" && (
+              <div>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Exit Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  {...register("exit_date")}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+            )}
+          </div>
 
           {/* Quantity and Commission */}
           <div className="grid grid-cols-2 gap-6">
@@ -407,7 +408,7 @@ export default function NewTradePage() {
 
             <div>
               <label className="block text-gray-300 text-sm font-medium mb-2">
-                Commission
+                Commission & Fees
               </label>
               <input
                 type="number"

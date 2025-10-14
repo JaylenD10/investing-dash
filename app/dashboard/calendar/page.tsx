@@ -342,7 +342,7 @@ export default function CalendarPage() {
       {/* Daily Trade Details */}
       <div>
         <p className="text-gray-400 mt-2">
-          Click on any day to view detailed trades
+          Click on any day to view trades details
         </p>
       </div>
       {selectedDay && (
