@@ -296,6 +296,7 @@ export default function NewTradePage() {
                 <option value="MCL">MCL - Micro Crude Oil</option>
                 <option value="NG">NG - Natural Gas</option>
                 <option value="6E">6E - Euro FX</option>
+                <option value="6E">M6E - Micro Euro FX</option>
                 <option value="ZN">ZN - 10-Year T-Note</option>
                 <option value="ZB">ZB - 30-Year T-Bond</option>
               </datalist>
