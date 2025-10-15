@@ -142,6 +142,17 @@ export const FUTURES_CONTRACTS: Record<string, FuturesContract> = {
     initialMargin: 2310,
     maintenanceMargin: 2100,
   },
+  // Micro Euro FX
+  M6E: {
+    symbol: 'M6E',
+    name: 'Micro Euro FX',
+    exchange: 'CME',
+    tickSize: 0.0001,
+    tickValue: 1.25,
+    pointValue: 12500,
+    initialMargin: 2310,
+    maintenanceMargin: 2100,
+  },
   // Natural Gas
   NG: {
     symbol: 'NG',
