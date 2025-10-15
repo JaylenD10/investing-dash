@@ -325,6 +325,25 @@ export default function TradesPage() {
     }
   };
 
+  const getPriceStep = (symbol: string) => {
+    if (
+      symbol.includes("6") ||
+      symbol.includes("/") ||
+      ["EUR", "GBP", "JPY", "AUD"].some((curr) => symbol.includes(curr))
+    ) {
+      return "0.00001";
+    }
+    return "0.01";
+  };
+
+  const formatPrice = (price: number, symbol: string) => {
+    const isFX =
+      symbol.includes("6") ||
+      symbol.includes("/") ||
+      ["EUR", "GBP", "JPY", "AUD"].some((curr) => symbol.includes(curr));
+    return isFX ? price.toFixed(5) : price.toFixed(2);
+  };
+
   const calculateTotals = () => {
     const totalPnL = filteredTrades.reduce(
       (sum, trade) => sum + (trade.pnl || 0),
@@ -574,7 +593,9 @@ export default function TradesPage() {
                       {isEditing ? (
                         <input
                           type="number"
-                          step="0.01"
+                          step={getPriceStep(
+                            editedTrade.symbol || trade.symbol
+                          )}
                           value={editedTrade.entry_price}
                           onChange={(e) =>
                             setEditedTrade({
@@ -585,14 +606,16 @@ export default function TradesPage() {
                           className="bg-gray-700 text-white rounded px-2 py-1 w-24 text-sm"
                         />
                       ) : (
-                        `$${trade.entry_price}`
+                        `$${formatPrice(trade.entry_price, trade.symbol)}`
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                       {isEditing ? (
                         <input
                           type="number"
-                          step="0.01"
+                          step={getPriceStep(
+                            editedTrade.symbol || trade.symbol
+                          )}
                           value={editedTrade.exit_price || ""}
                           onChange={(e) =>
                             setEditedTrade({
@@ -606,7 +629,7 @@ export default function TradesPage() {
                           placeholder="-"
                         />
                       ) : trade.exit_price ? (
-                        `$${trade.exit_price}`
+                        `$${formatPrice(trade.exit_price, trade.symbol)}`
                       ) : (
                         "-"
                       )}

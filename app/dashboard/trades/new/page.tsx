@@ -359,7 +359,7 @@ export default function NewTradePage() {
                 </label>
                 <input
                   type="number"
-                  step="0.01"
+                  step={getPriceStep(watch("symbol") || "")}
                   {...register("exit_price", { valueAsNumber: true })}
                   className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
                   placeholder="0.00"
