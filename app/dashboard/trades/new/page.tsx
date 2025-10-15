@@ -190,6 +190,17 @@ export default function NewTradePage() {
     }
   };
 
+  const getPriceStep = (symbol: string) => {
+    if (
+      symbol.includes("6") ||
+      symbol.includes("/") ||
+      ["EUR", "GBP", "JPY", "AUD"].some((curr) => symbol.includes(curr))
+    ) {
+      return "0.00001";
+    }
+    return "0.01";
+  };
+
   const handleGoBack = () => {
     router.back();
   };
@@ -329,7 +340,7 @@ export default function NewTradePage() {
               </label>
               <input
                 type="number"
-                step="0.01"
+                step={getPriceStep(watch("symbol") || "")}
                 {...register("entry_price", { valueAsNumber: true })}
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors"
                 placeholder="0.00"
