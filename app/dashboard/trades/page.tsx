@@ -511,7 +511,7 @@ export default function TradesPage() {
 
           {/* Sort By */}
           <div className="flex items-center gap-2">
-            <span className="text-gray-400 text-sm">Sort by:</span>
+            <span className="text-neutral-400 text-sm">Sort by:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortBy)}
@@ -595,7 +595,7 @@ export default function TradesPage() {
 
                 return (
                   <React.Fragment key={trade.id}>
-                    <tr className="hover:bg-neutral-800/50 transition-colors">
+                    <tr className="hover:bg-gray-700/50 transition-colors">
                       {/* ... (keep your existing table cells) */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {isEditing ? (

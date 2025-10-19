@@ -436,15 +436,16 @@ export default function DashboardPage() {
             <div>
               <p className="text-neutral-400">Period Start</p>
               <p className="text-white font-medium">
-                ${filteredChartData[0]?.cumulativePnL || 0}
+                ${filteredChartData[0]?.cumulativePnL.toFixed(2) || 0}
               </p>
             </div>
             <div>
               <p className="text-neutral-400">Period End</p>
               <p className="text-white font-medium">
                 $
-                {filteredChartData[filteredChartData.length - 1]
-                  ?.cumulativePnL || 0}
+                {filteredChartData[
+                  filteredChartData.length - 1
+                ]?.cumulativePnL.toFixed(2) || 0}
               </p>
             </div>
             <div>
