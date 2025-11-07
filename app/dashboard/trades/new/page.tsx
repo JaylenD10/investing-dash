@@ -54,6 +54,7 @@ export default function NewTradePage() {
   const watchExitPrice = watch("exit_price");
   const watchQuantity = watch("quantity");
   const watchSymbol = watch("symbol");
+  const watchCommission = watch("commission");
 
   const calculatePnL = () => {
     if (!watchEntryPrice || !watchExitPrice || !watchQuantity || !watchSymbol)
@@ -66,8 +67,9 @@ export default function NewTradePage() {
       watchQuantity,
       watchSide
     );
+    const fees = watchCommission || 0;
 
-    return grossPnL - (watch("commission") || 0);
+    return grossPnL - fees;
   };
 
   const calculatePercentageGain = () => {

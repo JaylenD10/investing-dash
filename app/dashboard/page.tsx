@@ -19,6 +19,7 @@ import {
   Legend,
   ResponsiveContainer,
   ComposedChart,
+  Cell,
 } from "recharts";
 import {
   format,
@@ -496,7 +497,6 @@ export default function DashboardPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="date" stroke="#9CA3AF" />
               <YAxis yAxisId="left" stroke="#9CA3AF" />
-              <YAxis yAxisId="right" orientation="right" stroke="#9CA3AF" />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1F2937",
@@ -505,7 +505,14 @@ export default function DashboardPage() {
                 labelStyle={{ color: "#9CA3AF" }}
               />
               <Legend />
-              <Bar yAxisId="left" dataKey="pnl" fill="#3B82F6" name="P&L" />
+              <Bar yAxisId="left" dataKey="pnl" fill="#3B82F6" name="P&L">
+                {chartData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.pnl >= 0 ? "#3B82F6" : "#EF4444"}
+                  />
+                ))}
+              </Bar>
               <Line
                 yAxisId="right"
                 type="monotone"

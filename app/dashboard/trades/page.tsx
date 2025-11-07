@@ -153,8 +153,9 @@ export default function TradesPage() {
       trade.quantity,
       trade.side!
     );
+    const fees = trade.commission || 0;
 
-    return grossPnL - (trade.commission || 0);
+    return grossPnL - fees;
   };
 
   const calculatePercentageGain = (trade: Partial<Trade>) => {
