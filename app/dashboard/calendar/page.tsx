@@ -13,6 +13,7 @@ import {
   isSameMonth,
   parseISO,
   isToday,
+  isWeekend,
 } from "date-fns";
 import {
   ChevronLeft,
@@ -106,8 +107,9 @@ export default function CalendarPage() {
     const calendarEnd = endOfWeek(monthEnd);
 
     const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+    const weekdays = days.filter((date) => !isWeekend(date));
 
-    return days.map((date) => {
+    return weekdays.map((date) => {
       const dateStr = format(date, "yyyy-MM-dd");
       const dayTrades = trades.filter(
         (trade) => format(parseISO(trade.entry_date), "yyyy-MM-dd") === dateStr
@@ -151,8 +153,8 @@ export default function CalendarPage() {
 
   const calendarDays = generateCalendarDays();
   const weeks: CalendarDay[][] = [];
-  for (let i = 0; i < calendarDays.length; i += 7) {
-    weeks.push(calendarDays.slice(i, i + 7));
+  for (let i = 0; i < calendarDays.length; i += 5) {
+    weeks.push(calendarDays.slice(i, i + 5));
   }
 
   if (loading) {
@@ -233,9 +235,6 @@ export default function CalendarPage() {
             <thead>
               <tr>
                 <th className="text-left text-gray-400 text-xs font-medium p-2">
-                  Sun
-                </th>
-                <th className="text-left text-gray-400 text-xs font-medium p-2">
                   Mon
                 </th>
                 <th className="text-left text-gray-400 text-xs font-medium p-2">
@@ -249,9 +248,6 @@ export default function CalendarPage() {
                 </th>
                 <th className="text-left text-gray-400 text-xs font-medium p-2">
                   Fri
-                </th>
-                <th className="text-left text-gray-400 text-xs font-medium p-2">
-                  Sat
                 </th>
                 <th className="text-center text-gray-400 text-xs font-medium p-2">
                   Week P&L
