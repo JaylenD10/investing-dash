@@ -513,13 +513,6 @@ export default function DashboardPage() {
                   />
                 ))}
               </Bar>
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="pnl"
-                stroke="#10B981"
-                name="Trades"
-              />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
