@@ -101,9 +101,10 @@ export default function DashboardPage() {
           return trades;
       }
 
-      return trades.filter((trade) =>
-        isAfter(parseISO(trade.entry_date), startDate)
-      );
+      return trades.filter((trade) => {
+        if (!trade.exit_date) return false;
+        return isAfter(parseISO(trade.entry_date), startDate);
+      });
     },
     []
   );
@@ -116,7 +117,7 @@ export default function DashboardPage() {
       // Group trades by date for the selected period
       const tradesByDate: { [date: string]: Trade[] } = {};
       filteredTrades.forEach((trade) => {
-        const date = format(parseISO(trade.entry_date), "yyyy-MM-dd");
+        const date = format(parseISO(trade.exit_date!), "yyyy-MM-dd");
         if (!tradesByDate[date]) {
           tradesByDate[date] = [];
         }
@@ -134,9 +135,7 @@ export default function DashboardPage() {
 
       const chartData = sortedDates.map((date) => {
         const dayTrades = tradesByDate[date];
-        const dayPnL = dayTrades
-          .filter((t) => t.status === "CLOSED" && t.pnl)
-          .reduce((sum, t) => sum + (t.pnl || 0), 0);
+        const dayPnL = dayTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
 
         cumulativePnL += dayPnL;
 
@@ -145,7 +144,7 @@ export default function DashboardPage() {
           fullDate: date,
           pnl: dayPnL,
           cumulativePnL,
-          trades: dayPnL,
+          trades: dayTrades.length,
         };
       });
 
@@ -271,24 +270,6 @@ export default function DashboardPage() {
     });
   };
 
-  // Prepare chart data
-  const chartData = dailyStats.map((stat) => ({
-    date: format(parseISO(stat.date), "MMM dd"),
-    pnl: stat.total_pnl,
-    trades: stat.total_trades,
-    winRate: stat.win_rate,
-  }));
-
-  // Calculate cumulative P&L
-  let cumulativePnL = 0;
-  const cumulativeData = chartData.map((day) => {
-    cumulativePnL += day.pnl;
-    return {
-      ...day,
-      cumulativePnL,
-    };
-  });
-
   const StatCard = ({
     title,
     value,
@@ -412,7 +393,7 @@ export default function DashboardPage() {
             <PeriodSelector />
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={cumulativeData}>
+            <LineChart data={filteredChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="date" stroke="#9CA3AF" />
               <YAxis stroke="#9CA3AF" />
@@ -493,7 +474,7 @@ export default function DashboardPage() {
             Daily Performance
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={chartData}>
+            <ComposedChart data={filteredChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="date" stroke="#9CA3AF" />
               <YAxis yAxisId="left" stroke="#9CA3AF" />
@@ -506,7 +487,7 @@ export default function DashboardPage() {
               />
               <Legend />
               <Bar yAxisId="left" dataKey="pnl" fill="#3B82F6" name="P&L">
-                {chartData.map((entry, index) => (
+                {filteredChartData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={entry.pnl >= 0 ? "#3B82F6" : "#EF4444"}
