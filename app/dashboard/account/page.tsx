@@ -393,8 +393,8 @@ export default function AccountPage() {
                     <span
                       className={
                         balanceBreakdown.transactionNet >= 0
-                          ? "text-green-500"
-                          : "text-red-500"
+                          ? "text-neutral-300"
+                          : "text-neutral-300"
                       }
                     >
                       {balanceBreakdown.transactionNet >= 0 ? "+" : ""}$
