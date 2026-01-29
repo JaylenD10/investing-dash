@@ -597,7 +597,6 @@ export default function TradesPage() {
                 return (
                   <React.Fragment key={trade.id}>
                     <tr className="hover:bg-gray-700/50 transition-colors">
-                      {/* ... (keep your existing table cells) */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {isEditing ? (
                           <input

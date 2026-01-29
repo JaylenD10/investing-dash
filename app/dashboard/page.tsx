@@ -396,13 +396,29 @@ export default function DashboardPage() {
             <LineChart data={filteredChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="date" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
+              <YAxis
+                stroke="#9CA3AF"
+                tickFormatter={(num: number) => {
+                  return new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                    maximumFractionDigits: 0,
+                    minimumFractionDigits: 0,
+                  }).format(num);
+                }}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1F2937",
                   border: "1px solid #374151",
                 }}
                 labelStyle={{ color: "#9CA3AF" }}
+                formatter={(num: number) => {
+                  return new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(num);
+                }}
               />
               <Line
                 type="monotone"
@@ -484,6 +500,12 @@ export default function DashboardPage() {
                   border: "1px solid #374151",
                 }}
                 labelStyle={{ color: "#9CA3AF" }}
+                formatter={(num: number) => {
+                  return new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(num);
+                }}
               />
               <Legend />
               <Bar yAxisId="left" dataKey="pnl" fill="#3B82F6" name="P&L">
