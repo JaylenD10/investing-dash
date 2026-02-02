@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const menuItems = [
+  { name: "Account", href: "/dashboard/account", icon: Wallet },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { name: "Trades", href: "/dashboard/trades", icon: TrendingUp },
@@ -28,7 +29,6 @@ const menuItems = [
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Import Trades", href: "/dashboard/import", icon: Upload },
   { name: "Reports", href: "/dashboard/reports", icon: FileText },
-  { name: "Account", href: "/dashboard/account", icon: Wallet },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 

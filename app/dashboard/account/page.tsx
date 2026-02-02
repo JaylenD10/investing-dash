@@ -387,21 +387,6 @@ export default function AccountPage() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-neutral-500">
-                      Deposits/Withdrawals:
-                    </span>
-                    <span
-                      className={
-                        balanceBreakdown.transactionNet >= 0
-                          ? "text-neutral-300"
-                          : "text-neutral-300"
-                      }
-                    >
-                      {balanceBreakdown.transactionNet >= 0 ? "+" : ""}$
-                      {balanceBreakdown.transactionNet.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
                     <span className="text-neutral-500">Trading P&L:</span>
                     <span
                       className={
