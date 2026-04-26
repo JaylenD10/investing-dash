@@ -45,7 +45,7 @@ export default function NewTradePage() {
     resolver: zodResolver(tradeSchema),
     defaultValues: {
       side: "LONG",
-      commission: 0,
+      //commission: 0,
     },
   });
 
@@ -111,7 +111,7 @@ export default function NewTradePage() {
         ...(tradeStatus === "CLOSED" && {
           exit_date: localExitDate,
           exit_price: data.exit_price,
-          pnl: calculatePnL() - (data.commission || 0),
+          pnl: calculatePnL(),
           percentage_gain: calculatePercentageGain(),
         }),
       };

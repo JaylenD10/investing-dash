@@ -21,8 +21,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const menuItems = [
-  { name: "Account", href: "/dashboard/account", icon: Wallet },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Account", href: "/dashboard/account", icon: Wallet },
   { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
   { name: "Trades", href: "/dashboard/trades", icon: TrendingUp },
   { name: "Add Trade", href: "/dashboard/trades/new", icon: PlusCircle },
