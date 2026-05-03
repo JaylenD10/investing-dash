@@ -24,7 +24,6 @@ import {
   X,
   Plus,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface CalendarDay {
   date: Date;
@@ -46,7 +45,6 @@ export default function CalendarPage() {
     winRate: 0,
   });
   const supabase = createClient();
-  const router = useRouter();
 
   const fetchCalendarData = useCallback(async () => {
     try {
