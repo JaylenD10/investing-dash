@@ -226,23 +226,6 @@ export default function NewTradePage() {
         </button>
         <h1 className="text-3xl font-bold text-white">Add New Trade</h1>
         <p className="text-gray-400 mt-2">Record your trading activity</p>
-        {contractInfo && (
-          <div className="bg-neutral-800 rounded-lg p-4 mt-4">
-            <h4 className="text-white font-medium mb-2">
-              Contract Specifications
-            </h4>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="text-neutral-400">Contract:</div>
-              <div className="text-white">{contractInfo.name}</div>
-              <div className="text-neutral-400">Point Value:</div>
-              <div className="text-white">${contractInfo.pointValue}</div>
-              <div className="text-neutral-400">Tick Size:</div>
-              <div className="text-white">{contractInfo.tickSize}</div>
-              <div className="text-neutral-400">Tick Value:</div>
-              <div className="text-white">${contractInfo.tickValue}</div>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
@@ -310,8 +293,6 @@ export default function NewTradePage() {
                 <option value="NG">NG - Natural Gas</option>
                 <option value="6E">6E - Euro FX</option>
                 <option value="M6E">M6E - Micro Euro FX</option>
-                <option value="ZN">ZN - 10-Year T-Note</option>
-                <option value="ZB">ZB - 30-Year T-Bond</option>
               </datalist>
               {errors.symbol && (
                 <p className="text-red-500 text-sm mt-1">
@@ -491,6 +472,23 @@ export default function NewTradePage() {
           </button>
         </form>
       </div>
+      {contractInfo && (
+        <div className="bg-neutral-800 rounded-lg p-4 mt-4">
+          <h4 className="text-white font-medium mb-2">
+            Contract Specifications
+          </h4>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="text-neutral-400">Contract:</div>
+            <div className="text-white">{contractInfo.name}</div>
+            <div className="text-neutral-400">Point Value:</div>
+            <div className="text-white">${contractInfo.pointValue}</div>
+            <div className="text-neutral-400">Tick Size:</div>
+            <div className="text-white">{contractInfo.tickSize}</div>
+            <div className="text-neutral-400">Tick Value:</div>
+            <div className="text-white">${contractInfo.tickValue}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

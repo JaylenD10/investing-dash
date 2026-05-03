@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Trade, DailyStats } from "@/types/database";
+import Link from "next/link";
 import {
   format,
   startOfMonth,
@@ -21,7 +22,9 @@ import {
   TrendingUp,
   TrendingDown,
   X,
+  Plus,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface CalendarDay {
   date: Date;
@@ -43,6 +46,7 @@ export default function CalendarPage() {
     winRate: 0,
   });
   const supabase = createClient();
+  const router = useRouter();
 
   const fetchCalendarData = useCallback(async () => {
     try {
@@ -174,11 +178,22 @@ export default function CalendarPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white">Trading Calendar</h1>
-        <p className="text-gray-400 mt-2">
-          View your daily trading performance
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Trading Calendar</h1>
+          <p className="text-gray-400 mt-2">
+            View your daily trading performance
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Link
+            href="/dashboard/trades/new"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Trade
+          </Link>
+        </div>
       </div>
 
       {/* Month Navigation */}
@@ -370,12 +385,20 @@ export default function CalendarPage() {
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={() => setSelectedDay(null)}
-                  className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex gap-1">
+                  <Link
+                    href="/dashboard/trades/new"
+                    className="p-2 text-blue-500 hover:text-white hover:bg-blue-600 rounded-lg transition-colors"
+                  >
+                    <Plus className="w-6 h-6" />
+                  </Link>
+                  <button
+                    onClick={() => setSelectedDay(null)}
+                    className="p-2 text-gray-400 hover:text-white hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -391,49 +414,53 @@ export default function CalendarPage() {
                         key={trade.id}
                         className="bg-gray-700 rounded-lg p-4"
                       >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center space-x-3">
-                              <span className="text-white font-medium">
-                                {trade.symbol}
-                              </span>
-                              <span
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  trade.side === "LONG"
-                                    ? "bg-green-500/10 text-green-500"
-                                    : "bg-red-500/10 text-red-500"
-                                }`}
-                              >
-                                {trade.side}
-                              </span>
+                        <Link href={`/dashboard/trades`} key={trade.id}>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="flex items-center space-x-3">
+                                <span className="text-white font-medium">
+                                  {trade.symbol}
+                                </span>
+                                <span
+                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                    trade.side === "LONG"
+                                      ? "bg-green-500/10 text-green-500"
+                                      : "bg-red-500/10 text-red-500"
+                                  }`}
+                                >
+                                  {trade.side}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-400 mt-1">
+                                Entry: ${trade.entry_price} | Exit: $
+                                {trade.exit_price || "-"} | Qty:{" "}
+                                {trade.quantity}
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-400 mt-1">
-                              Entry: ${trade.entry_price} | Exit: $
-                              {trade.exit_price || "-"} | Qty: {trade.quantity}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {trade.pnl !== undefined && trade.pnl !== null && (
-                              <p
-                                className={`font-medium ${
-                                  trade.pnl >= 0
-                                    ? "text-green-500"
-                                    : "text-red-500"
-                                }`}
-                              >
-                                ${trade.pnl.toFixed(2)}
+                            <div className="text-right">
+                              {trade.pnl !== undefined &&
+                                trade.pnl !== null && (
+                                  <p
+                                    className={`font-medium ${
+                                      trade.pnl >= 0
+                                        ? "text-green-500"
+                                        : "text-red-500"
+                                    }`}
+                                  >
+                                    ${trade.pnl.toFixed(2)}
+                                  </p>
+                                )}
+                              <p className="text-xs text-gray-400">
+                                {trade.status}
                               </p>
-                            )}
-                            <p className="text-xs text-gray-400">
-                              {trade.status}
-                            </p>
+                            </div>
                           </div>
-                        </div>
-                        {trade.notes && (
-                          <p className="text-sm text-gray-500 mt-2">
-                            {trade.notes}
-                          </p>
-                        )}
+                          {trade.notes && (
+                            <p className="text-sm text-gray-500 mt-2">
+                              {trade.notes}
+                            </p>
+                          )}
+                        </Link>
                       </div>
                     ))}
                   </div>
