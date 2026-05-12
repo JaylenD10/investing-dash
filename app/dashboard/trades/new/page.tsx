@@ -45,7 +45,6 @@ export default function NewTradePage() {
     resolver: zodResolver(tradeSchema),
     defaultValues: {
       side: "LONG",
-      //commission: 0,
     },
   });
 
@@ -125,7 +124,8 @@ export default function NewTradePage() {
         await updateDailyStats(
           user.id,
           data.exit_date,
-          calculatePnL() - (data.commission || 0)
+          calculatePnL()
+          //- (data.commission || 0)
         );
       }
 
