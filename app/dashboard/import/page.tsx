@@ -4,26 +4,19 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Upload, FileText, AlertCircle, Check } from "lucide-react";
 import Papa from "papaparse";
-import { format } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { calculateFuturesPnL } from "@/lib/futures-specs";
 import { useRouter } from "next/navigation";
 
-interface CSVRow {
-  Symbol: string;
-  Side: string;
-  Type: string;
-  Qty: string;
-  "Limit Price": string;
-  "Stop Price": string;
-  "Active At": string;
-  "Fill Qty": string;
-  "Avg Fill Price": string;
-  Commission: string;
-  "Placing Time": string;
-  Status: string;
-  "Status Time": string;
-  "Order ID": string;
-  Duration: string;
+interface AmpCsvRow {
+  DATE: string;
+  "TRADE NUMBER": string;
+  MARKET: string;
+  BUY: string;
+  SELL: string;
+  "CONTRACT DESCRIPTION": string;
+  "TRADE PRICE": string;
+  CCY: string;
 }
 
 interface ParsedTrade {
@@ -37,6 +30,41 @@ interface ParsedTrade {
   commission: number;
   pnl: number;
 }
+
+interface OpenLot {
+  contractKey: string;
+  symbol: string;
+  side: "LONG" | "SHORT";
+  quantity: number;
+  price: number;
+  time: string;
+}
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error
+    ? error.message
+    : typeof error === "string"
+    ? error
+    : "An unknown error occurred";
+
+const extractSymbol = (contractDescription: string): string => {
+  const symbol = contractDescription.trim().split(/\s+/)[0]?.toUpperCase();
+  return symbol || contractDescription;
+};
+
+const parseAmpDate = (value: string): string | null => {
+  const parsed = parse(value.trim(), "dd-MMM-yy", new Date());
+  return isValid(parsed) ? format(parsed, "yyyy-MM-dd'T'00:00:00") : null;
+};
+
+const withDefaultExecutionTime = (
+  dateAtMidnight: string,
+  sequence: number
+): string => {
+  const timestamp = new Date(dateAtMidnight);
+  timestamp.setHours(7, sequence * 10, 0, 0);
+  return format(timestamp, "yyyy-MM-dd'T'HH:mm:ss");
+};
 
 export default function ImportPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -53,164 +81,219 @@ export default function ImportPage() {
   const supabase = createClient();
   const router = useRouter();
 
-  const getErrorMessage = (error: unknown): string => {
-    if (error instanceof Error) return error.message;
-    if (typeof error === "string") return error;
-    return "An unknown error occurred";
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.type === "text/csv" || file.name.endsWith(".csv")) {
-        setSelectedFile(file);
-        setError(null);
-        setParsedTrades([]);
-        setImportStatus("idle");
-      } else {
-        setError("Please select a CSV file");
-      }
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "text/csv" && !file.name.toLowerCase().endsWith(".csv")) {
+      setError("Please select a CSV file.");
+      return;
     }
-  };
-
-  const extractSymbol = (fullSymbol: string): string => {
-    // Extract the contract code from format like "F.US.MGCZ25"
-    const parts = fullSymbol.split(".");
-    if (parts.length >= 3) {
-      const contract = parts[parts.length - 1];
-      // Map to standard symbols
-      if (contract.startsWith("MGC")) return "MGC"; // Micro Gold
-      if (contract.startsWith("MES")) return "MES"; // Micro E-mini S&P
-      if (contract.startsWith("MNQ")) return "MNQ"; // Micro E-mini Nasdaq
-      if (contract.startsWith("M2K")) return "M2K"; // Micro E-mini Russel
-      if (contract.startsWith("ES")) return "ES"; // E-mini S&P
-      if (contract.startsWith("NQ")) return "NQ"; // E-mini Nasdaq
-      if (contract.startsWith("RTY")) return "RTY"; // E-mini Russell
-      if (contract.startsWith("CL")) return "CL"; // Crude Oil
-      if (contract.startsWith("GC")) return "GC"; // Gold
-      // Add more mappings as needed
-    }
-    return fullSymbol;
+    setSelectedFile(file);
+    setError(null);
+    setParsedTrades([]);
+    setImportStatus("idle");
   };
 
   const parseCSVData = async () => {
     if (!selectedFile) return;
-
     setImportStatus("parsing");
     setParsing(true);
     setError(null);
 
     try {
       const text = await selectedFile.text();
-
-      Papa.parse<CSVRow>(text, {
+      Papa.parse<AmpCsvRow>(text, {
         header: true,
-        skipEmptyLines: true,
+        skipEmptyLines: "greedy",
+        transformHeader: (header) => header.trim().toUpperCase(),
         complete: (results) => {
           try {
-            // Filter only filled market orders
-            const filledOrders = results.data.filter(
-              (row) =>
-                row.Status === "Filled" &&
-                (row.Type === "Market" || row.Type === "Stop") &&
-                row["Avg Fill Price"]
+            const requiredHeaders = [
+              "DATE",
+              "TRADE NUMBER",
+              "BUY",
+              "SELL",
+              "CONTRACT DESCRIPTION",
+              "TRADE PRICE",
+            ];
+            const headers = results.meta.fields ?? [];
+            const missingHeaders = requiredHeaders.filter(
+              (header) => !headers.includes(header)
             );
+            if (missingHeaders.length > 0)
+              throw new Error(
+                `This does not look like an AMP broker statement. Missing: ${missingHeaders.join(
+                  ", "
+                )}`
+              );
 
-            // Sort by time
-            filledOrders.sort(
-              (a, b) =>
-                new Date(a["Status Time"]).getTime() -
-                new Date(b["Status Time"]).getTime()
-            );
-
-            // Match trades (Buy -> Sell)
+            const rows = results.data
+              .filter(
+                (row) =>
+                  row.DATE &&
+                  row["CONTRACT DESCRIPTION"] &&
+                  row["TRADE PRICE"] &&
+                  (row.BUY || row.SELL)
+              )
+              .reverse();
+            const openLots: OpenLot[] = [];
             const trades: ParsedTrade[] = [];
-            const openPositions: typeof filledOrders = [];
+            const executionsPerDate = new Map<string, number>();
+            let skippedRows = 0;
 
-            filledOrders.forEach((order) => {
-              const symbol = extractSymbol(order.Symbol);
-              const quantity = parseInt(order["Fill Qty"] || order.Qty);
-              const price = parseFloat(order["Avg Fill Price"]);
-              const time = order["Status Time"];
-
-              if (order.Side === "Buy") {
-                openPositions.push(order);
-              } else if (order.Side === "Sell") {
-                // Find matching buy order
-                const matchIndex = openPositions.findIndex(
-                  (buy) =>
-                    extractSymbol(buy.Symbol) === symbol &&
-                    parseInt(buy["Fill Qty"] || buy.Qty) === quantity
-                );
-
-                if (matchIndex !== -1) {
-                  const buyOrder = openPositions[matchIndex];
-                  const entryPrice = parseFloat(buyOrder["Avg Fill Price"]);
-                  const exitPrice = price;
-
-                  // Calculate P&L
-                  const pnl = calculateFuturesPnL(
-                    symbol,
-                    entryPrice,
-                    exitPrice,
-                    quantity,
-                    "LONG"
-                  );
-
-                  trades.push({
-                    symbol,
-                    side: "LONG",
-                    entryPrice,
-                    exitPrice,
-                    quantity,
-                    entryTime: buyOrder["Status Time"],
-                    exitTime: time,
-                    commission: 0, // TradingView CSV doesn't include commission
-                    pnl,
-                  });
-
-                  // Remove matched position
-                  openPositions.splice(matchIndex, 1);
-                } else {
-                  // This might be a short trade or unmatched sell
-                  console.warn("Unmatched sell order:", order);
-                }
+            for (const row of rows) {
+              const quantity = Number(row.BUY || row.SELL);
+              const price = Number(row["TRADE PRICE"]);
+              const dateAtMidnight = parseAmpDate(row.DATE);
+              if (
+                !Number.isFinite(quantity) ||
+                quantity <= 0 ||
+                !Number.isFinite(price) ||
+                !dateAtMidnight
+              ) {
+                skippedRows += 1;
+                continue;
               }
-            });
+              const sequence = executionsPerDate.get(dateAtMidnight) ?? 0;
+              const time = withDefaultExecutionTime(dateAtMidnight, sequence);
+              executionsPerDate.set(dateAtMidnight, sequence + 1);
+
+              const side: "LONG" | "SHORT" = row.BUY ? "LONG" : "SHORT";
+              const contractKey = row["CONTRACT DESCRIPTION"]
+                .trim()
+                .toUpperCase();
+              const symbol = extractSymbol(row["CONTRACT DESCRIPTION"]);
+              let remaining = quantity;
+
+              // Close the oldest open lot for this exact contract first. The
+              // matched quantity is the lower of the entry and exit quantities,
+              // so a 2-lot exit against two 1-lot entries creates two trades,
+              // each with its own entry price and the shared exit price.
+              for (let index = 0; index < openLots.length && remaining > 0; ) {
+                const lot = openLots[index];
+                if (lot.contractKey !== contractKey || lot.side === side) {
+                  index += 1;
+                  continue;
+                }
+                const matchedQuantity = Math.min(remaining, lot.quantity);
+                trades.push({
+                  symbol: lot.symbol,
+                  side: lot.side,
+                  entryPrice: lot.price,
+                  exitPrice: price,
+                  quantity: matchedQuantity,
+                  entryTime: lot.time,
+                  exitTime: time,
+                  commission: 0,
+                  pnl: calculateFuturesPnL(
+                    lot.symbol,
+                    lot.price,
+                    price,
+                    matchedQuantity,
+                    lot.side
+                  ),
+                });
+                lot.quantity -= matchedQuantity;
+                remaining -= matchedQuantity;
+                if (lot.quantity === 0) openLots.splice(index, 1);
+                else index += 1;
+              }
+
+              if (remaining > 0)
+                openLots.push({
+                  contractKey,
+                  symbol,
+                  side,
+                  quantity: remaining,
+                  price,
+                  time,
+                });
+            }
 
             setParsedTrades(trades);
             setImportStatus("idle");
-          } catch (err) {
-            console.error("Error processing data:", err);
-            setError("Error processing CSV data");
+            if (trades.length === 0)
+              setError(
+                "No closed trades were found. Open positions are not imported."
+              );
+            else if (skippedRows > 0)
+              setError(
+                `${skippedRows} invalid row${
+                  skippedRows === 1 ? " was" : "s were"
+                } skipped.`
+              );
+          } catch (parseError) {
+            setError(getErrorMessage(parseError));
             setImportStatus("error");
+          } finally {
+            setParsing(false);
           }
         },
-        error: (err: unknown) => {
-          setError(`CSV parsing error: ${getErrorMessage(err)}`);
+        error: (parseError: Error) => {
+          setError(`CSV parsing error: ${getErrorMessage(parseError)}`);
           setImportStatus("error");
+          setParsing(false);
         },
       });
-    } catch {
-      setError("Error reading file");
+    } catch (readError) {
+      setError(`Error reading file: ${getErrorMessage(readError)}`);
       setImportStatus("error");
-    } finally {
       setParsing(false);
     }
   };
 
+  const updateDailyStats = async (
+    userId: string,
+    date: string,
+    pnl: number
+  ) => {
+    const statsDate = date.slice(0, 10);
+    const { data: existingStats, error: findError } = await supabase
+      .from("daily_stats")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("date", statsDate)
+      .maybeSingle();
+    if (findError) throw findError;
+    if (existingStats) {
+      const totalTrades = existingStats.total_trades + 1;
+      const winningTrades = existingStats.winning_trades + (pnl > 0 ? 1 : 0);
+      const losingTrades = existingStats.losing_trades + (pnl < 0 ? 1 : 0);
+      const { error: updateError } = await supabase
+        .from("daily_stats")
+        .update({
+          total_trades: totalTrades,
+          winning_trades: winningTrades,
+          losing_trades: losingTrades,
+          total_pnl: existingStats.total_pnl + pnl,
+          win_rate: (winningTrades / totalTrades) * 100,
+        })
+        .eq("id", existingStats.id);
+      if (updateError) throw updateError;
+    } else {
+      const { error: insertError } = await supabase.from("daily_stats").insert({
+        user_id: userId,
+        date: statsDate,
+        total_trades: 1,
+        winning_trades: pnl > 0 ? 1 : 0,
+        losing_trades: pnl < 0 ? 1 : 0,
+        total_pnl: pnl,
+        win_rate: pnl > 0 ? 100 : 0,
+      });
+      if (insertError) throw insertError;
+    }
+  };
+
   const importTrades = async () => {
-    if (parsedTrades.length === 0) return;
-
+    if (!parsedTrades.length) return;
     setImportStatus("importing");
-    setImportProgress({ current: 0, total: parsedTrades.length });
-
+    setImportProgress({ current: 0, total: parsedTrades.length * 2 });
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
-
+      const now = new Date().toISOString();
       const tradesToInsert = parsedTrades.map((trade) => ({
         user_id: user.id,
         symbol: trade.symbol,
@@ -223,134 +306,60 @@ export default function ImportPage() {
         commission: trade.commission,
         pnl: trade.pnl,
         percentage_gain:
-          ((trade.exitPrice - trade.entryPrice) / trade.entryPrice) * 100,
+          ((trade.exitPrice - trade.entryPrice) / trade.entryPrice) *
+          (trade.side === "LONG" ? 100 : -100),
         status: "CLOSED" as const,
-        notes: "Imported from TradingView",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        notes: "Imported from AMP Futures",
+        created_at: now,
+        updated_at: now,
       }));
-
-      // Insert trades in batches
-      const batchSize = 10;
-      for (let i = 0; i < tradesToInsert.length; i += batchSize) {
-        const batch = tradesToInsert.slice(i, i + batchSize);
-
-        const { error } = await supabase.from("trades").insert(batch);
-
-        if (error) throw error;
-
+      for (let index = 0; index < tradesToInsert.length; index += 10) {
+        const { error: insertError } = await supabase
+          .from("trades")
+          .insert(tradesToInsert.slice(index, index + 10));
+        if (insertError) throw insertError;
         setImportProgress({
-          current: Math.min(i + batchSize, tradesToInsert.length),
-          total: tradesToInsert.length,
-        });
-      }
-
-      // Update daily stats for each unique date
-      for (let i = 0; i < parsedTrades.length; i++) {
-        const trade = parsedTrades[i];
-        // Update stats for the exit date (when the trade was closed)
-        await updateDailyStats(user.id, trade.exitTime, trade.pnl);
-
-        setImportProgress({
-          current: parsedTrades.length + i + 1,
+          current: Math.min(index + 10, parsedTrades.length),
           total: parsedTrades.length * 2,
         });
       }
-
-      setImportStatus("success");
-
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        router.push("/dashboard/trades");
-      }, 2000);
-    } catch (err) {
-      console.error("Import error:", err);
-
-      if (err) {
-        setError(getErrorMessage(err) || "Error importing trades");
+      for (let index = 0; index < parsedTrades.length; index += 1) {
+        await updateDailyStats(
+          user.id,
+          parsedTrades[index].exitTime,
+          parsedTrades[index].pnl
+        );
+        setImportProgress({
+          current: parsedTrades.length + index + 1,
+          total: parsedTrades.length * 2,
+        });
       }
-
+      setImportStatus("success");
+      setTimeout(() => router.push("/dashboard/trades"), 2000);
+    } catch (importError) {
+      setError(`Error importing trades: ${getErrorMessage(importError)}`);
       setImportStatus("error");
-    }
-  };
-
-  const updateDailyStats = async (
-    userId: string,
-    date: string,
-    pnl: number
-  ) => {
-    const statsDate = date.split("T")[0]; // Get just the date part
-
-    const { data: existingStats } = await supabase
-      .from("daily_stats")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("date", statsDate)
-      .single();
-
-    if (existingStats) {
-      // Update existing stats
-      const newTotalTrades = existingStats.total_trades + 1;
-      const newWinningTrades =
-        pnl > 0
-          ? existingStats.winning_trades + 1
-          : existingStats.winning_trades;
-      const newLosingTrades =
-        pnl < 0 ? existingStats.losing_trades + 1 : existingStats.losing_trades;
-      const newTotalPnl = existingStats.total_pnl + pnl;
-      const newWinRate =
-        newTotalTrades > 0 ? (newWinningTrades / newTotalTrades) * 100 : 0;
-
-      await supabase
-        .from("daily_stats")
-        .update({
-          total_trades: newTotalTrades,
-          winning_trades: newWinningTrades,
-          losing_trades: newLosingTrades,
-          total_pnl: newTotalPnl,
-          win_rate: newWinRate,
-        })
-        .eq("id", existingStats.id);
-    } else {
-      // Create new daily stats
-      await supabase.from("daily_stats").insert([
-        {
-          user_id: userId,
-          date: statsDate,
-          total_trades: 1,
-          winning_trades: pnl > 0 ? 1 : 0,
-          losing_trades: pnl < 0 ? 1 : 0,
-          total_pnl: pnl,
-          win_rate: pnl > 0 ? 100 : 0,
-        },
-      ]);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Import Trades</h1>
+        <h1 className="text-3xl font-bold text-white">Import AMP Trades</h1>
         <p className="text-neutral-400 mt-2">
-          Import trades from TradingView CSV export
+          Import an AMP broker statement CSV.
         </p>
       </div>
-
-      {/* File Upload */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-4">
           Upload CSV File
         </h2>
-
         <div className="border-2 border-dashed border-neutral-700 rounded-lg p-8 text-center">
           <FileText className="w-12 h-12 text-neutral-400 mx-auto mb-4" />
-          <p className="text-neutral-300 mb-2">
+          <p className="text-neutral-300 mb-4">
             {selectedFile
               ? selectedFile.name
-              : "Drop your TradingView CSV export here or click to browse"}
-          </p>
-          <p className="text-neutral-500 text-sm mb-4">
-            Export your order history from TradingView as CSV
+              : "Choose your AMP broker statement CSV"}
           </p>
           <input
             type="file"
@@ -362,92 +371,74 @@ export default function ImportPage() {
           />
           <label
             htmlFor="csv-upload"
-            className="inline-flex items-center px-4 py-2 bg-white hover:bg-neutral-100 text-black font-medium rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-4 py-2 bg-white text-black font-medium rounded-lg cursor-pointer"
           >
             <Upload className="w-4 h-4 mr-2" />
             Select CSV File
           </label>
         </div>
-
         {selectedFile && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-neutral-400 text-sm">
-              Selected: {selectedFile.name}
-            </p>
+          <div className="mt-4 flex justify-end">
             <button
               onClick={parseCSVData}
               disabled={parsing || importStatus === "importing"}
-              className="px-4 py-2 bg-white hover:bg-neutral-100 text-black font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-white text-black font-medium rounded-lg"
             >
               {parsing ? "Parsing..." : "Parse CSV"}
             </button>
           </div>
         )}
       </div>
-
-      {/* Error Display */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500 rounded-lg p-4 flex items-start space-x-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-red-500 font-medium">Import Error</p>
-            <p className="text-red-400 text-sm mt-1">{error}</p>
-          </div>
+        <div className="bg-red-500/10 border border-red-500 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="text-red-400 text-sm">{error}</p>
         </div>
       )}
-
-      {/* Parsed Trades Preview */}
       {parsedTrades.length > 0 && importStatus !== "success" && (
         <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white">
-              Found {parsedTrades.length} Trade
-              {parsedTrades.length !== 1 ? "s" : ""}
+              Found {parsedTrades.length} closed trade
+              {parsedTrades.length === 1 ? "" : "s"}
             </h2>
             <button
               onClick={importTrades}
               disabled={importStatus === "importing"}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg"
             >
               {importStatus === "importing"
                 ? `Importing... (${importProgress.current}/${importProgress.total})`
                 : "Import All Trades"}
             </button>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-neutral-800">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                    Symbol
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                    Entry
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                    Exit
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                    Qty
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                    P&L
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                    Entry Time
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase tracking-wider">
-                    Exit Time
-                  </th>
+                  {[
+                    "Symbol",
+                    "Side",
+                    "Entry",
+                    "Exit",
+                    "Qty",
+                    "P&L",
+                    "Date",
+                  ].map((label) => (
+                    <th
+                      key={label}
+                      className="px-4 py-3 text-left text-xs font-medium text-neutral-400 uppercase"
+                    >
+                      {label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-700">
+              <tbody>
                 {parsedTrades.map((trade, index) => (
-                  <tr key={index} className="hover:bg-neutral-800/50">
-                    <td className="px-4 py-3 text-white font-medium">
-                      {trade.symbol}
-                    </td>
+                  <tr key={index} className="border-t border-neutral-700">
+                    <td className="px-4 py-3 text-white">{trade.symbol}</td>
+                    <td className="px-4 py-3 text-neutral-300">{trade.side}</td>
                     <td className="px-4 py-3 text-neutral-300">
                       ${trade.entryPrice}
                     </td>
@@ -458,61 +449,26 @@ export default function ImportPage() {
                       {trade.quantity}
                     </td>
                     <td
-                      className={`px-4 py-3 font-medium ${
+                      className={`px-4 py-3 ${
                         trade.pnl >= 0 ? "text-green-500" : "text-red-500"
                       }`}
                     >
                       ${trade.pnl.toFixed(2)}
                     </td>
-                    <td className="px-4 py-3 text-neutral-400 text-xs">
-                      {format(new Date(trade.entryTime), "MMM dd HH:mm")}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-400 text-xs">
-                      {format(new Date(trade.exitTime), "MMM dd HH:mm")}
+                    <td className="px-4 py-3 text-neutral-400">
+                      {format(new Date(trade.exitTime), "MMM dd, yyyy")}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-
-          {/* Import Summary */}
-          <div className="mt-4 p-4 bg-neutral-800 rounded-lg">
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-neutral-400">Total P&L</p>
-                <p
-                  className={`text-lg font-medium ${
-                    parsedTrades.reduce((sum, t) => sum + t.pnl, 0) >= 0
-                      ? "text-green-500"
-                      : "text-red-500"
-                  }`}
-                >
-                  ${parsedTrades.reduce((sum, t) => sum + t.pnl, 0).toFixed(2)}
-                </p>
-              </div>
-              <div>
-                <p className="text-neutral-400">Winning Trades</p>
-                <p className="text-lg font-medium text-green-500">
-                  {parsedTrades.filter((t) => t.pnl > 0).length}
-                </p>
-              </div>
-              <div>
-                <p className="text-neutral-400">Losing Trades</p>
-                <p className="text-lg font-medium text-red-500">
-                  {parsedTrades.filter((t) => t.pnl < 0).length}
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
-
-      {/* Success Message */}
       {importStatus === "success" && (
         <div className="bg-green-500/10 border border-green-500 rounded-lg p-6 text-center">
           <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-green-500 mb-2">
+          <h3 className="text-xl font-semibold text-green-500">
             Import Successful!
           </h3>
           <p className="text-neutral-400">
@@ -524,16 +480,16 @@ export default function ImportPage() {
           </p>
         </div>
       )}
-
       {/* Instructions */}
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6">
         <h3 className="text-blue-400 font-semibold mb-2">
-          How to Export from TradingView
+          How to Export from AMP
         </h3>
         <ol className="text-neutral-300 text-sm space-y-2 list-decimal list-inside">
-          <li>Go to your TradingView account</li>
-          <li>Navigate to Trading Panel → History tab</li>
-          <li>Click the export icon (download arrow)</li>
+          <li>Download the PDF client statement</li>
+          <li>Take a screenshot of the Purchase & Sale</li>
+          <li>Import to AI & reformat to use commas</li>
+          <li>Remove DEBIT/CREDIT column and TOTAL rows</li>
           <li>Select &#34;Export to CSV&#34;</li>
           <li>Upload the downloaded CSV file here</li>
         </ol>
