@@ -62,7 +62,7 @@ const withDefaultExecutionTime = (
   sequence: number
 ): string => {
   const timestamp = new Date(dateAtMidnight);
-  timestamp.setHours(7, sequence * 10, 0, 0);
+  timestamp.setHours(7, sequence * 1, 0, 0);
   return format(timestamp, "yyyy-MM-dd'T'HH:mm:ss");
 };
 
