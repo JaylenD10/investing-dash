@@ -21,6 +21,7 @@ import {
 import { calculateFuturesPnL } from "@/lib/futures-specs";
 
 type PageSize = 10 | 50 | "ALL";
+type MetricsSize = 50 | 100 | 200 | 500 | "ALL";
 
 export default function TradesPage() {
   type SortBy = "date" | "pnl" | "symbol";
@@ -35,6 +36,7 @@ export default function TradesPage() {
   const [editedTrade, setEditedTrade] = useState<Partial<Trade>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(10);
+  const [metricsSize, setMetricsSize] = useState<MetricsSize>("ALL");
   const supabase = createClient();
 
   const totalPages =
@@ -390,28 +392,60 @@ export default function TradesPage() {
     return isFX ? price.toFixed(5) : price.toFixed(2);
   };
 
-  const calculateTotals = () => {
-    const totalPnL = filteredTrades.reduce(
+  // const calculateTotals = () => {
+  //   const totalPnL = filteredTrades.reduce(
+  //     (sum, trade) => sum + (trade.pnl || 0),
+  //     0
+  //   );
+  //   const winningTrades = filteredTrades.filter(
+  //     (trade) => trade.pnl && trade.pnl > 0
+  //   ).length;
+  //   const losingTrades = filteredTrades.filter(
+  //     (trade) => trade.pnl && trade.pnl < 0
+  //   ).length;
+  //   const winRate =
+  //     filteredTrades.length > 0
+  //       ? (winningTrades /
+  //           filteredTrades.filter((t) => t.status === "CLOSED").length) *
+  //         100
+  //       : 0;
+
+  //   return { totalPnL, winningTrades, losingTrades, winRate };
+  // };
+
+  // const { totalPnL, winningTrades, losingTrades, winRate } = calculateTotals();
+
+  const metricTrades = [...trades]
+    .filter((trade) => trade.status === "CLOSED")
+    .sort(
+      (a, b) =>
+        new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime()
+    );
+
+  const tradesForMetrics =
+    metricsSize === "ALL" ? metricTrades : metricTrades.slice(0, metricsSize);
+
+  const calculateTotals = (tradesToCalculate: Trade[]) => {
+    const totalPnL = tradesToCalculate.reduce(
       (sum, trade) => sum + (trade.pnl || 0),
       0
     );
-    const winningTrades = filteredTrades.filter(
+    const winningTrades = tradesToCalculate.filter(
       (trade) => trade.pnl && trade.pnl > 0
     ).length;
-    const losingTrades = filteredTrades.filter(
+    const losingTrades = tradesToCalculate.filter(
       (trade) => trade.pnl && trade.pnl < 0
     ).length;
     const winRate =
-      filteredTrades.length > 0
-        ? (winningTrades /
-            filteredTrades.filter((t) => t.status === "CLOSED").length) *
-          100
+      tradesToCalculate.length > 0
+        ? (winningTrades / tradesToCalculate.length) * 100
         : 0;
 
     return { totalPnL, winningTrades, losingTrades, winRate };
   };
 
-  const { totalPnL, winningTrades, losingTrades, winRate } = calculateTotals();
+  const { totalPnL, winningTrades, losingTrades, winRate } =
+    calculateTotals(tradesForMetrics);
 
   if (loading) {
     return (
@@ -449,7 +483,26 @@ export default function TradesPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-white">
+            Performance metrics
+          </h2>
+          <label className="flex items-center gap-2 text-sm text-gray-400">
+            Metrics for:
+            <select
+              value={metricsSize}
+              onChange={(e) => setMetricsSize(e.target.value as MetricsSize)}
+              className="px-3 py-1 bg-gray-800 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={50}>Last 50 trades</option>
+              <option value={100}>Last 100 trades</option>
+              <option value={200}>Last 200 trades</option>
+              <option value={500}>Last 500 trades</option>
+              <option value="ALL">All trades</option>
+            </select>
+          </label>
+        </div>
         <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
           <p className="text-gray-400 text-sm">Total P&L</p>
           <p
