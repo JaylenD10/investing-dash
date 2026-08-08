@@ -7,6 +7,7 @@ import Papa from "papaparse";
 import { format, isValid, parse } from "date-fns";
 import { calculateFuturesPnL } from "@/lib/futures-specs";
 import { useRouter } from "next/navigation";
+import AmpPdfImporter from "@/components/AmpPdfImporter";
 
 interface AmpCsvRow {
   DATE: string;
@@ -78,6 +79,7 @@ export default function ImportPage() {
     current: 0,
     total: 0,
   });
+  const [showPdfImporter, setShowPdfImporter] = useState(false);
   const supabase = createClient();
   const router = useRouter();
 
@@ -344,12 +346,28 @@ export default function ImportPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Import AMP Trades</h1>
-        <p className="text-neutral-400 mt-2">
-          Import an AMP broker statement CSV.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Import AMP Trades</h1>
+          <p className="text-neutral-400 mt-2">
+            Import an AMP broker statement CSV.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowPdfImporter((visible) => !visible)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+        >
+          {showPdfImporter ? "Close PDF Import" : "PDF Import"}
+        </button>
       </div>
+      {showPdfImporter && (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">
+            Import AMP statement PDF
+          </h2>
+          <AmpPdfImporter />
+        </div>
+      )}
       <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-4">
           Upload CSV File
