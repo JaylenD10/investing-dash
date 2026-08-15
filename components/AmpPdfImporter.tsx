@@ -207,7 +207,6 @@ export default function AmpPdfImporter({
     setSkipped([]);
     setMessage(null);
     try {
-      //const pdfjs = await getPdfJs();
       const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() })
         .promise;
       const extracted: AmpTradeRow[] = [],
