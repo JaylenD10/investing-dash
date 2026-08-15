@@ -277,12 +277,16 @@ export default function AmpPdfImporter({
   };
   return (
     <div className="space-y-5">
-      <input
-        type="file"
-        accept="application/pdf,.pdf"
-        disabled={loading}
-        onChange={(e) => e.target.files?.[0] && parsePdf(e.target.files[0])}
-      />
+      <label className="inline-flex cursor-pointer items-center rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-blue-400 hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
+        <span>{loading ? "Extracting..." : "Choose PDF statement"}</span>
+        <input
+          type="file"
+          accept="application/pdf,.pdf"
+          disabled={loading}
+          className="sr-only"
+          onChange={(e) => e.target.files?.[0] && parsePdf(e.target.files[0])}
+        />
+      </label>
       <p>{loading ? "Extracting statement..." : message}</p>
       {rows.length > 0 && (
         <>
