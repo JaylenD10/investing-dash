@@ -276,7 +276,7 @@ export default function AmpPdfImporter({
     URL.revokeObjectURL(url);
   };
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 text-white">
       <label className="inline-flex cursor-pointer items-center rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-blue-400 hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">
         <span>{loading ? "Extracting..." : "Choose PDF statement"}</span>
         <input
@@ -287,7 +287,9 @@ export default function AmpPdfImporter({
           onChange={(e) => e.target.files?.[0] && parsePdf(e.target.files[0])}
         />
       </label>
-      <p>{loading ? "Extracting statement..." : message}</p>
+      <p className="text-sm text-gray-300">
+        {loading ? "Extracting statement..." : message}
+      </p>
       {rows.length > 0 && (
         <>
           <div className="overflow-auto">
@@ -319,8 +321,21 @@ export default function AmpPdfImporter({
               </tbody>
             </table>
           </div>
-          <button onClick={download}>Download CSV</button>
-          <button onClick={() => onConfirm?.(csv, rows)}>Confirm import</button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={download}
+              className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-blue-400 hover:bg-blue-600 hover:text-white"
+            >
+              Download CSV
+            </button>
+
+            <button
+              onClick={() => onConfirm?.(csv, rows)}
+              className="rounded-lg border border-green-700 bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-green-400 hover:bg-green-600"
+            >
+              Confirm import
+            </button>
+          </div>
         </>
       )}
       {skipped.length > 0 && (
