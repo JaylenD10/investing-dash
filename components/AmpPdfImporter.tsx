@@ -47,7 +47,7 @@ const DATE = /^\d{2}-[A-Z]{3}-\d{2}$/;
 
 const normalize = (value: string) =>
   value.replace(/[^A-Z&]/gi, "").toUpperCase();
-const csvCell = (value: string) => `"${value.replaceAll('"', '""')}"`;
+const csvCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
 function parseTradeLine(line: string): { row?: AmpTradeRow; reason?: string } {
   if (!DATE.test(line.slice(0, 9))) return { reason: "Not a trade row" };
@@ -79,7 +79,7 @@ function parseTradeLine(line: string): { row?: AmpTradeRow; reason?: string } {
     BUY: buy,
     SELL: sell,
     "CONTRACT DESCRIPTION": description.trim(),
-    "TRADE PRICE": price.replaceAll(",", ""),
+    "TRADE PRICE": price.replace(/,/g, ""),
     CCY: ccy,
   };
   if (
