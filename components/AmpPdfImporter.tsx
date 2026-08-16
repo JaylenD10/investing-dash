@@ -191,11 +191,7 @@ async function getOcrText(page: PdfPage) {
   return data.text;
 }
 
-export default function AmpPdfImporter({
-  onConfirm,
-}: {
-  onConfirm?: (csv: string, rows: AmpTradeRow[]) => Promise<void> | void;
-}) {
+export default function AmpPdfImporter() {
   const [rows, setRows] = useState<AmpTradeRow[]>([]);
   const [skipped, setSkipped] = useState<SkippedRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -326,13 +322,6 @@ export default function AmpPdfImporter({
               className="rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-blue-400 hover:bg-blue-600 hover:text-white"
             >
               Download CSV
-            </button>
-
-            <button
-              onClick={() => onConfirm?.(csv, rows)}
-              className="rounded-lg border border-green-700 bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-green-400 hover:bg-green-600"
-            >
-              Confirm import
             </button>
           </div>
         </>
