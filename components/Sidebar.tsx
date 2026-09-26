@@ -54,7 +54,7 @@ export default function Sidebar() {
         {!isCollapsed && (
           <div>
             <h1 className="text-2xl font-bold text-white">Trade Syndicate</h1>
-            <p className="text-gray-400 text-sm mt-1">Trading Journal</p>
+            <p className="text-gray-400 text-sm mt-1">Trading Log</p>
           </div>
         )}
         <button

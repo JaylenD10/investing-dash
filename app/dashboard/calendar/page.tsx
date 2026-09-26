@@ -15,6 +15,11 @@ import {
   parseISO,
   isToday,
   isWeekend,
+  addMonths,
+  addYears,
+  startOfYear,
+  endOfYear,
+  getDaysInMonth,
 } from "date-fns";
 import {
   ChevronLeft,
@@ -37,6 +42,8 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [trades, setTrades] = useState<Trade[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
+  const [overviewYear, setOverviewYear] = useState(new Date().getFullYear());
+  const [yearDailyStats, setYearDailyStats] = useState<DailyStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [monthStats, setMonthStats] = useState({
@@ -97,6 +104,33 @@ export default function CalendarPage() {
       setLoading(false);
     }
   }, [currentDate, supabase]);
+
+  const fetchYearData = useCallback(async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const yearDate = new Date(overviewYear, 0, 1);
+      const { data, error } = await supabase
+        .from("daily_stats")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("date", format(startOfYear(yearDate), "yyyy-MM-dd"))
+        .lte("date", format(endOfYear(yearDate), "yyyy-MM-dd"));
+
+      if (error) throw error;
+      setYearDailyStats(data ?? []);
+    } catch (error) {
+      console.error("Error fetching year calendar data:", error);
+    }
+  }, [overviewYear, supabase]);
+
+  useEffect(() => {
+    fetchYearData();
+  }, [fetchYearData]);
 
   useEffect(() => {
     fetchCalendarData();
@@ -171,6 +205,25 @@ export default function CalendarPage() {
     if (day.isCurrentMonth && (day.trades.length > 0 || day.stats)) {
       setSelectedDay(day);
     }
+  };
+
+  const earliestOverviewYear = new Date().getFullYear() - 4;
+  const yearStatsByDate = new Map(
+    yearDailyStats.map((stat) => [stat.date, stat])
+  );
+
+  const selectOverviewMonth = (monthIndex: number) => {
+    setCurrentDate(new Date(overviewYear, monthIndex, 1));
+    setSelectedDay(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getDayColor = (date: Date) => {
+    const stat = yearStatsByDate.get(format(date, "yyyy-MM-dd"));
+    if (!stat || stat.total_pnl === 0) return "bg-gray-700/50";
+    return stat.total_pnl > 0
+      ? "bg-green-500 hover:bg-green-400"
+      : "bg-red-500 hover:bg-red-400";
   };
 
   return (
@@ -346,14 +399,129 @@ export default function CalendarPage() {
             </tbody>
           </table>
         </div>
+        <div>
+          <p className="text-gray-400 mt-1">
+            Click on any day to view trades details
+          </p>
+        </div>
       </div>
 
       {/* Daily Trade Details */}
-      <div>
-        <p className="text-gray-400 mt-2">
-          Click on any day to view trades details
-        </p>
-      </div>
+      <section className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-white">
+              Year at a glance
+            </h2>
+            <p className="text-gray-400 mt-1">
+              Select a month to view its full trading calendar.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setOverviewYear((year) => year - 1)}
+              disabled={overviewYear <= earliestOverviewYear}
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Previous year"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="min-w-16 text-center text-lg font-semibold text-white">
+              {overviewYear}
+            </span>
+            <button
+              type="button"
+              onClick={() => setOverviewYear((year) => year + 1)}
+              disabled={overviewYear >= new Date().getFullYear()}
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Next year"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {Array.from({ length: 12 }, (_, index) => 11 - index)
+            .filter((monthIndex) =>
+              yearDailyStats.some((stat) => {
+                const statDate = parseISO(stat.date);
+                return statDate.getMonth() === monthIndex;
+              })
+            )
+            .map((monthIndex) => {
+              const monthDate = new Date(overviewYear, monthIndex, 1);
+              const daysInMonth = eachDayOfInterval({
+                start: startOfMonth(monthDate),
+                end: endOfMonth(monthDate),
+              });
+
+              return (
+                <button
+                  type="button"
+                  key={monthIndex}
+                  onClick={() => selectOverviewMonth(monthIndex)}
+                  className={`rounded-xl border p-4 text-left transition-colors hover:border-blue-500 hover:bg-gray-700/50 ${
+                    isSameMonth(monthDate, currentDate)
+                      ? "border-blue-500 bg-blue-500/10"
+                      : "border-gray-700 bg-gray-800"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-medium text-white">
+                      {format(monthDate, "MMMM")}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1">
+                    {Array.from(
+                      { length: startOfMonth(monthDate).getDay() },
+                      (_, index) => (
+                        <span key={`blank-${index}`} />
+                      )
+                    )}
+                    {daysInMonth.map((date) => {
+                      const stat = yearStatsByDate.get(
+                        format(date, "yyyy-MM-dd")
+                      );
+                      return (
+                        <span
+                          key={date.toISOString()}
+                          title={
+                            stat
+                              ? `${format(
+                                  date,
+                                  "MMM d"
+                                )}: $${stat.total_pnl.toFixed(2)}`
+                              : format(date, "MMM d")
+                          }
+                          className={`aspect-square rounded-sm text-center text-[10px] leading-5 transition-colors ${getDayColor(
+                            date
+                          )} ${
+                            stat ? "text-white font-semibold" : "text-gray-500"
+                          }`}
+                        >
+                          {format(date, "d")}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </button>
+              );
+            })}
+        </div>
+
+        <div className="mt-5 flex items-center gap-4 text-xs text-gray-400">
+          <span className="flex items-center gap-2">
+            <i className="w-3 h-3 rounded-sm bg-green-500" /> Positive P&amp;L
+          </span>
+          <span className="flex items-center gap-2">
+            <i className="w-3 h-3 rounded-sm bg-red-500" /> Negative P&amp;L
+          </span>
+        </div>
+      </section>
       {selectedDay && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
