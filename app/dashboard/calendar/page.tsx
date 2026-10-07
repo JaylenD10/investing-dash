@@ -470,6 +470,26 @@ export default function CalendarPage() {
                     <span className="font-medium text-white">
                       {format(monthDate, "MMMM")}
                     </span>
+
+                    {(() => {
+                      const monthPnl = daysInMonth.reduce(
+                        (total, date) =>
+                          total +
+                          (yearStatsByDate.get(format(date, "yyyy-MM-dd"))
+                            ?.total_pnl ?? 0),
+                        0
+                      );
+
+                      return (
+                        <span
+                          className={`text-sm font-semibold ${
+                            monthPnl >= 0 ? "text-green-400" : "text-red-400"
+                          }`}
+                        >
+                          ${monthPnl.toFixed(2)}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <div className="grid grid-cols-7 gap-1">
