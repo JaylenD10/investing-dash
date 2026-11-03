@@ -32,6 +32,17 @@ export const FUTURES_CONTRACTS: Record<string, FuturesContract> = {
     initialMargin: 1320,
     maintenanceMargin: 1200,
   },
+  // E-nano S&P 500
+  NES: {
+    symbol: 'NES',
+    name: 'E-nano S&P 500',
+    exchange: 'CME',
+    tickSize: 0.5,
+    tickValue: 0.25,
+    pointValue: 0.5,
+    initialMargin: 0, // Add broker-specific values when available
+    maintenanceMargin: 0,
+  },
   // E-mini Nasdaq-100
   NQ: {
     symbol: 'NQ',
@@ -53,6 +64,16 @@ export const FUTURES_CONTRACTS: Record<string, FuturesContract> = {
     pointValue: 2,
     initialMargin: 1760,
     maintenanceMargin: 1600,
+  },
+  NNQ: {
+    symbol: 'NNQ',
+    name: 'E-nano Nasdaq-100',
+    exchange: 'CME',
+    tickSize: 0.5,
+    tickValue: 0.1,
+    pointValue: 0.2,
+    initialMargin: 0, // Add broker-specific values when available
+    maintenanceMargin: 0,
   },
   // E-mini Russell 2000
   RTY: {
@@ -163,28 +184,6 @@ export const FUTURES_CONTRACTS: Record<string, FuturesContract> = {
     pointValue: 10000,
     initialMargin: 3080,
     maintenanceMargin: 2800,
-  },
-  // 10-Year T-Note
-  ZN: {
-    symbol: 'ZN',
-    name: '10-Year T-Note',
-    exchange: 'CBOT',
-    tickSize: 0.015625, // 1/64
-    tickValue: 15.625,
-    pointValue: 1000,
-    initialMargin: 1650,
-    maintenanceMargin: 1500,
-  },
-  // 30-Year T-Bond
-  ZB: {
-    symbol: 'ZB',
-    name: '30-Year T-Bond',
-    exchange: 'CBOT',
-    tickSize: 0.03125, // 1/32
-    tickValue: 31.25,
-    pointValue: 1000,
-    initialMargin: 3850,
-    maintenanceMargin: 3500,
   },
 };
 

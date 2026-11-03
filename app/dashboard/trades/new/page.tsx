@@ -281,8 +281,10 @@ export default function NewTradePage() {
               <datalist id="futures-symbols">
                 <option value="ES">ES - E-mini S&P 500</option>
                 <option value="MES">MES - Micro E-mini S&P</option>
+                <option value="NES">NES - Micro E-mini S&P</option>
                 <option value="NQ">NQ - E-mini Nasdaq</option>
                 <option value="MNQ">MNQ - Micro E-mini Nasdaq</option>
+                <option value="NNQ">NNQ - Micro E-mini Nasdaq</option>
                 <option value="RTY">RTY - E-mini Russell</option>
                 <option value="M2K">M2K - Micro E-mini Russell</option>
                 <option value="YM">YM - E-mini Dow</option>
